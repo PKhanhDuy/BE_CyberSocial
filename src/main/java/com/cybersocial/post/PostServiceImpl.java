@@ -1,12 +1,14 @@
 package com.cybersocial.post;
 
 import com.cybersocial.auth.repository.UserRepository;
+import com.cybersocial.common.exception.BadRequestException;
 import com.cybersocial.common.exception.ForbiddenOperationException;
 import com.cybersocial.common.exception.ResourceNotFoundException;
 import com.cybersocial.common.response.PagedResponse;
 import com.cybersocial.post.dto.PostRequest;
 import com.cybersocial.post.dto.PostResponse;
 import com.cybersocial.user.User;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -50,10 +52,18 @@ public class PostServiceImpl implements PostService {
     public PostResponse createPost(UUID currentUserId, PostRequest request) {
         User author = userRepository.findById(currentUserId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        String content = request.content() == null ? "" : request.content().trim();
+        List<String> mediaUrls = normalizeMediaUrls(request.mediaUrls());
+
+        if (content.isBlank() && mediaUrls.isEmpty()) {
+            throw new BadRequestException("Post content or media is required");
+        }
+
         Post post = Post.builder()
                 .author(author)
-                .content(request.content().trim())
+                .content(content)
                 .visibility(request.visibility() == null ? PostVisibility.PUBLIC : request.visibility())
+                .mediaUrls(mediaUrls)
                 .build();
         // Post post = new Post();
         // post.setAuthor(author);
@@ -74,5 +84,15 @@ public class PostServiceImpl implements PostService {
     private Post getPost(UUID postId) {
         return postRepository.findById(postId)
                 .orElseThrow(() -> new ResourceNotFoundException("Post not found"));
+    }
+
+    private List<String> normalizeMediaUrls(List<String> mediaUrls) {
+        if (mediaUrls == null) {
+            return List.of();
+        }
+        return mediaUrls.stream()
+                .map(url -> url == null ? "" : url.trim())
+                .filter(url -> !url.isBlank())
+                .toList();
     }
 }

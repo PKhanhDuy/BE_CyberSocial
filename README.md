@@ -53,6 +53,11 @@ JWT_ISSUER=cybersocial
 JWT_ACCESS_TOKEN_MINUTES=15
 JWT_REFRESH_TOKEN_DAYS=30
 SERVER_PORT=8080
+CLOUDINARY_CLOUD_NAME=your-cloud-name
+CLOUDINARY_API_KEY=your-api-key
+CLOUDINARY_API_SECRET=your-api-secret
+CLOUDINARY_FOLDER=cybersocial/posts
+UPLOAD_MAX_IMAGE_SIZE=5MB
 ```
 
 For production, replace `JWT_SECRET`, database credentials, and the CORS production placeholder in `application.yml`.
@@ -133,6 +138,11 @@ Posts:
 - `GET /api/posts/{id}`
 - `POST /api/posts`
 - `DELETE /api/posts/{id}`
+
+Uploads:
+
+- `POST /api/uploads/images` with `multipart/form-data` field `file`
+- Uploaded images are stored in Cloudinary and the response returns the Cloudinary `secure_url`
 
 Notifications:
 

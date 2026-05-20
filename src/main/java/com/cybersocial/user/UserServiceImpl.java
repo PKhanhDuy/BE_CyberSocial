@@ -2,6 +2,8 @@ package com.cybersocial.user;
 
 import com.cybersocial.auth.repository.UserRepository;
 import com.cybersocial.common.exception.ResourceNotFoundException;
+import com.cybersocial.user.dto.UpdateAvatarRequest;
+import com.cybersocial.user.dto.UpdateCoverRequest;
 import com.cybersocial.user.dto.UpdateUserRequest;
 import com.cybersocial.user.dto.UserResponse;
 import java.util.UUID;
@@ -28,6 +30,22 @@ public class UserServiceImpl implements UserService {
     public UserResponse updateCurrentUser(UUID currentUserId, UpdateUserRequest request) {
         User user = getUser(currentUserId);
         user.setDisplayName(request.displayName().trim());
+        return UserResponse.from(user);
+    }
+
+    @Override
+    @Transactional
+    public UserResponse updateCurrentUserAvatar(UUID currentUserId, UpdateAvatarRequest request) {
+        User user = getUser(currentUserId);
+        user.setAvatarUrl(request.avatarUrl().trim());
+        return UserResponse.from(user);
+    }
+
+    @Override
+    @Transactional
+    public UserResponse updateCurrentUserCover(UUID currentUserId, UpdateCoverRequest request) {
+        User user = getUser(currentUserId);
+        user.setCoverUrl(request.coverUrl().trim());
         return UserResponse.from(user);
     }
 

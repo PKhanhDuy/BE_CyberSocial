@@ -49,6 +49,12 @@ public class User {
     @Column(nullable = false, length = 120)
     private String displayName;
 
+    @Column(name = "avatar_url", length = 2048)
+    private String avatarUrl;
+
+    @Column(name = "cover_url", length = 2048)
+    private String coverUrl;
+
     @Column(nullable = false)
     private String passwordHash;
 
