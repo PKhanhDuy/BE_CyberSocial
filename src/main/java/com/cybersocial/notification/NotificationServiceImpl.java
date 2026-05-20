@@ -4,6 +4,7 @@ import com.cybersocial.common.exception.ForbiddenOperationException;
 import com.cybersocial.common.exception.ResourceNotFoundException;
 import com.cybersocial.common.response.PagedResponse;
 import com.cybersocial.notification.dto.NotificationResponse;
+import com.cybersocial.user.User;
 import java.time.Instant;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
@@ -50,5 +51,16 @@ public class NotificationServiceImpl implements NotificationService {
             notification.setReadAt(Instant.now());
         }
         return NotificationResponse.from(notification);
+    }
+
+    @Override
+    @Transactional
+    public void create(User recipient, NotificationType type, String title, String message) {
+        notificationRepository.save(Notification.builder()
+                .recipient(recipient)
+                .type(type)
+                .title(title)
+                .message(message)
+                .build());
     }
 }

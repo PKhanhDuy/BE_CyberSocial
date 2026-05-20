@@ -144,6 +144,17 @@ Uploads:
 - `POST /api/uploads/images` with `multipart/form-data` field `file`
 - Uploaded images are stored in Cloudinary and the response returns the Cloudinary `secure_url`
 
+Friends:
+
+- `GET /api/friends`
+- `GET /api/friends/requests/incoming`
+- `GET /api/friends/requests/outgoing`
+- `GET /api/friends/search?query=duy&page=0&size=20`
+- `POST /api/friends/requests/{userId}`
+- `POST /api/friends/requests/{requestId}/accept`
+- `DELETE /api/friends/requests/{requestId}`
+- `DELETE /api/friends/{friendshipId}`
+
 Notifications:
 
 - `GET /api/notifications?page=0&size=20`
