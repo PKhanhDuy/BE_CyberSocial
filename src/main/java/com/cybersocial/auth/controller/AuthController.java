@@ -1,6 +1,7 @@
 package com.cybersocial.auth.controller;
 
 import com.cybersocial.auth.dto.AuthResponse;
+import com.cybersocial.auth.dto.ForgotPasswordRequest;
 import com.cybersocial.auth.dto.LoginRequest;
 import com.cybersocial.auth.dto.RegisterRequest;
 import com.cybersocial.auth.service.AuthService;
@@ -48,6 +49,12 @@ public class AuthController {
         AuthenticationResult result = authService.login(request);
         addRefreshCookie(response, result);
         return ResponseEntity.ok(ApiResponse.success("Logged in successfully", result.response()));
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<ApiResponse<Void>> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        authService.forgotPassword(request);
+        return ResponseEntity.ok(ApiResponse.success("Temporary password has been sent to your registered email", null));
     }
 
     @PostMapping("/refresh")

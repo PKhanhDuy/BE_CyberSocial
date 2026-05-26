@@ -2,6 +2,7 @@ package com.cybersocial.auth.service;
 
 import com.cybersocial.auth.RefreshToken;
 import com.cybersocial.auth.dto.AuthResponse;
+import com.cybersocial.auth.dto.ForgotPasswordRequest;
 import com.cybersocial.auth.dto.LoginRequest;
 import com.cybersocial.auth.dto.RegisterRequest;
 import com.cybersocial.auth.repository.RefreshTokenRepository;
@@ -16,6 +17,9 @@ import com.cybersocial.user.dto.UserResponse;
 import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.Base64;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -31,6 +35,8 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final JwtUtil jwtUtil;
+    private final JavaMailSender mailSender;
+    private final String resetPasswordFromAddress;
     private final SecureRandom secureRandom = new SecureRandom();
 
     public AuthServiceImpl(
@@ -38,13 +44,17 @@ public class AuthServiceImpl implements AuthService {
             RefreshTokenRepository refreshTokenRepository,
             PasswordEncoder passwordEncoder,
             AuthenticationManager authenticationManager,
-            JwtUtil jwtUtil
+            JwtUtil jwtUtil,
+            JavaMailSender mailSender,
+            @Value("${app.mail.from:}") String resetPasswordFromAddress
     ) {
         this.userRepository = userRepository;
         this.refreshTokenRepository = refreshTokenRepository;
         this.passwordEncoder = passwordEncoder;
         this.authenticationManager = authenticationManager;
         this.jwtUtil = jwtUtil;
+        this.mailSender = mailSender;
+        this.resetPasswordFromAddress = resetPasswordFromAddress;
     }
 
     @Override
@@ -77,6 +87,18 @@ public class AuthServiceImpl implements AuthService {
         User user = userRepository.findByEmailIgnoreCase(request.email())
                 .orElseThrow(() -> new BadCredentialsException("Invalid email or password"));
         return issueTokens(user);
+    }
+
+    @Override
+    @Transactional
+    public void forgotPassword(ForgotPasswordRequest request) {
+        String normalizedEmail = request.email().trim().toLowerCase();
+        userRepository.findByEmailIgnoreCase(normalizedEmail).ifPresent(user -> {
+            String temporaryPassword = newTemporaryPassword();
+            user.setPasswordHash(passwordEncoder.encode(temporaryPassword));
+            refreshTokenRepository.revokeActiveTokensForUser(user.getId(), Instant.now());
+            sendTemporaryPassword(user, temporaryPassword);
+        });
     }
 
     @Override
@@ -127,5 +149,34 @@ public class AuthServiceImpl implements AuthService {
         byte[] randomBytes = new byte[64];
         secureRandom.nextBytes(randomBytes);
         return Base64.getUrlEncoder().withoutPadding().encodeToString(randomBytes);
+    }
+
+    private String newTemporaryPassword() {
+        String alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%";
+        StringBuilder password = new StringBuilder(12);
+        for (int i = 0; i < 12; i++) {
+            password.append(alphabet.charAt(secureRandom.nextInt(alphabet.length())));
+        }
+        return password.toString();
+    }
+
+    private void sendTemporaryPassword(User user, String temporaryPassword) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        if (resetPasswordFromAddress != null && !resetPasswordFromAddress.isBlank()) {
+            message.setFrom(resetPasswordFromAddress);
+        }
+        message.setTo(user.getEmail());
+        message.setSubject("CyberSocial - Temporary password");
+        message.setText("""
+                Hello %s,
+
+                Your CyberSocial password has been reset.
+                Temporary password: %s
+
+                Please sign in and change this password immediately.
+
+                CyberSocial
+                """.formatted(user.getDisplayName(), temporaryPassword));
+        mailSender.send(message);
     }
 }
