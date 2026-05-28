@@ -2,6 +2,7 @@ package com.cybersocial.auth.service;
 
 import com.cybersocial.auth.RefreshToken;
 import com.cybersocial.auth.dto.AuthResponse;
+import com.cybersocial.auth.dto.ChangePasswordRequest;
 import com.cybersocial.auth.dto.ForgotPasswordRequest;
 import com.cybersocial.auth.dto.LoginRequest;
 import com.cybersocial.auth.dto.RegisterRequest;
@@ -17,6 +18,7 @@ import com.cybersocial.user.dto.UserResponse;
 import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.Base64;
+import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -99,6 +101,23 @@ public class AuthServiceImpl implements AuthService {
             refreshTokenRepository.revokeActiveTokensForUser(user.getId(), Instant.now());
             sendTemporaryPassword(user, temporaryPassword);
         });
+    }
+
+    @Override
+    @Transactional
+    public void changePassword(UUID userId, ChangePasswordRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BadRequestException("Authenticated user is unavailable"));
+
+        if (!passwordEncoder.matches(request.currentPassword(), user.getPasswordHash())) {
+            throw new BadCredentialsException("Current password is incorrect");
+        }
+
+        if (passwordEncoder.matches(request.newPassword(), user.getPasswordHash())) {
+            throw new BadRequestException("New password must be different from current password");
+        }
+
+        user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
     }
 
     @Override

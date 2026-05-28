@@ -1,8 +1,10 @@
 package com.cybersocial.auth.service;
 
+import com.cybersocial.auth.dto.ChangePasswordRequest;
 import com.cybersocial.auth.dto.ForgotPasswordRequest;
 import com.cybersocial.auth.dto.LoginRequest;
 import com.cybersocial.auth.dto.RegisterRequest;
+import java.util.UUID;
 
 public interface AuthService {
 
@@ -11,6 +13,8 @@ public interface AuthService {
     AuthenticationResult login(LoginRequest request);
 
     void forgotPassword(ForgotPasswordRequest request);
+
+    void changePassword(UUID userId, ChangePasswordRequest request);
 
     AuthenticationResult refresh(String refreshToken);
 
