@@ -35,19 +35,31 @@ public class ImageUploadServiceImpl implements ImageUploadService {
         validateCloudinaryConfig();
         validateImage(file);
 
-        String originalFileName = StringUtils.cleanPath(file.getOriginalFilename() == null ? "image" : file.getOriginalFilename());
+        return uploadToCloudinary(file, "image");
+    }
+
+    @Override
+    public ImageUploadResponse uploadVideo(MultipartFile file) {
+        validateCloudinaryConfig();
+        validateVideo(file);
+
+        return uploadToCloudinary(file, "video");
+    }
+
+    private ImageUploadResponse uploadToCloudinary(MultipartFile file, String resourceType) {
+        String originalFileName = StringUtils.cleanPath(file.getOriginalFilename() == null ? resourceType : file.getOriginalFilename());
         String contentType = file.getContentType().toLowerCase(Locale.ROOT);
         Map<?, ?> uploadResult;
         try {
             uploadResult = cloudinary.uploader().upload(file.getBytes(), ObjectUtils.asMap(
                     "folder", properties.folder(),
-                    "resource_type", "image",
+                    "resource_type", resourceType,
                     "use_filename", true,
                     "unique_filename", true,
                     "overwrite", false
             ));
         } catch (IOException exception) {
-            throw new BadRequestException("Could not upload image to Cloudinary");
+            throw new BadRequestException("Could not upload " + resourceType + " to Cloudinary");
         }
 
         String publicId = String.valueOf(uploadResult.get("public_id"));
@@ -76,6 +88,21 @@ public class ImageUploadServiceImpl implements ImageUploadService {
             }
         } catch (IOException exception) {
             throw new BadRequestException("Could not read image");
+        }
+    }
+
+    private void validateVideo(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new BadRequestException("Video file is required");
+        }
+
+        if (file.getSize() > properties.maxVideoSize().toBytes()) {
+            throw new BadRequestException("Video must be " + properties.maxVideoSize().toMegabytes() + "MB or smaller");
+        }
+
+        String contentType = file.getContentType();
+        if (contentType == null || !properties.allowedVideoContentTypes().contains(contentType.toLowerCase(Locale.ROOT))) {
+            throw new BadRequestException("Only MP4, WEBM, and MOV videos are allowed");
         }
     }
 
