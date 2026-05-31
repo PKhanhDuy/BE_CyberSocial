@@ -34,11 +34,12 @@ public class PostController {
     @GetMapping
     public ResponseEntity<ApiResponse<PagedResponse<PostResponse>>> listPosts(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) UUID authorId
     ) {
         int normalizedSize = Math.min(Math.max(size, 1), 100);
         Pageable pageable = PageRequest.of(Math.max(page, 0), normalizedSize, Sort.by(Sort.Direction.DESC, "createdAt"));
-        return ResponseEntity.ok(ApiResponse.success(postService.findPosts(pageable)));
+        return ResponseEntity.ok(ApiResponse.success(postService.findPosts(pageable, authorId)));
     }
 
     @GetMapping("/{id}")

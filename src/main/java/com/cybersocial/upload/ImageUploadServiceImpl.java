@@ -7,8 +7,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
-import javax.imageio.ImageIO;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
@@ -16,11 +14,7 @@ import org.springframework.web.multipart.MultipartFile;
 @Service
 public class ImageUploadServiceImpl implements ImageUploadService {
 
-    private static final Set<String> IMAGE_IO_CONTENT_TYPES = Set.of(
-            "image/jpeg",
-            "image/png",
-            "image/gif"
-    );
+    private static final int IMAGE_SIGNATURE_LENGTH = 12;
 
     private final Cloudinary cloudinary;
     private final CloudinaryProperties properties;
@@ -82,13 +76,54 @@ public class ImageUploadServiceImpl implements ImageUploadService {
             throw new BadRequestException("Only JPG, PNG, WEBP, and GIF images are allowed");
         }
 
+        String normalizedContentType = contentType.toLowerCase(Locale.ROOT);
         try (InputStream inputStream = file.getInputStream()) {
-            if (IMAGE_IO_CONTENT_TYPES.contains(contentType.toLowerCase(Locale.ROOT)) && ImageIO.read(inputStream) == null) {
+            byte[] signature = inputStream.readNBytes(IMAGE_SIGNATURE_LENGTH);
+            if (!hasValidImageSignature(normalizedContentType, signature)) {
                 throw new BadRequestException("Uploaded file is not a valid image");
             }
         } catch (IOException exception) {
             throw new BadRequestException("Could not read image");
         }
+    }
+
+    private boolean hasValidImageSignature(String contentType, byte[] signature) {
+        return switch (contentType) {
+            case "image/jpeg" -> hasPrefix(signature, new int[]{0xFF, 0xD8, 0xFF});
+            case "image/png" -> hasPrefix(signature, new int[]{0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A});
+            case "image/gif" -> hasPrefix(signature, "GIF87a".getBytes()) || hasPrefix(signature, "GIF89a".getBytes());
+            case "image/webp" -> signature.length >= 12
+                    && hasPrefix(signature, "RIFF".getBytes())
+                    && signature[8] == 'W'
+                    && signature[9] == 'E'
+                    && signature[10] == 'B'
+                    && signature[11] == 'P';
+            default -> true;
+        };
+    }
+
+    private boolean hasPrefix(byte[] value, int[] prefix) {
+        if (value.length < prefix.length) {
+            return false;
+        }
+        for (int index = 0; index < prefix.length; index++) {
+            if ((value[index] & 0xFF) != prefix[index]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private boolean hasPrefix(byte[] value, byte[] prefix) {
+        if (value.length < prefix.length) {
+            return false;
+        }
+        for (int index = 0; index < prefix.length; index++) {
+            if (value[index] != prefix[index]) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private void validateVideo(MultipartFile file) {

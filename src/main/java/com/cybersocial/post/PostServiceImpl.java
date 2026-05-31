@@ -28,8 +28,11 @@ public class PostServiceImpl implements PostService {
 
     @Override
     @Transactional(readOnly = true)
-    public PagedResponse<PostResponse> findPosts(Pageable pageable) {
-        Page<PostResponse> page = postRepository.findAllByOrderByCreatedAtDesc(pageable).map(PostResponse::from);
+    public PagedResponse<PostResponse> findPosts(Pageable pageable, UUID authorId) {
+        Page<PostResponse> page = (authorId == null
+                ? postRepository.findAllByOrderByCreatedAtDesc(pageable)
+                : postRepository.findByAuthorIdOrderByCreatedAtDesc(authorId, pageable))
+                .map(PostResponse::from);
         return new PagedResponse<>(
                 page.getContent(),
                 page.getNumber(),

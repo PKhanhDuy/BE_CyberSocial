@@ -8,7 +8,7 @@ import org.springframework.data.domain.Pageable;
 
 public interface PostService {
 
-    PagedResponse<PostResponse> findPosts(Pageable pageable);
+    PagedResponse<PostResponse> findPosts(Pageable pageable, UUID authorId);
 
     PostResponse findPost(UUID id);
 

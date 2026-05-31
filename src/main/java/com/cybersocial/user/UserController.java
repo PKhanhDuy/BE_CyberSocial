@@ -7,8 +7,10 @@ import com.cybersocial.user.dto.UpdateCoverRequest;
 import com.cybersocial.user.dto.UpdateUserRequest;
 import com.cybersocial.user.dto.UserResponse;
 import jakarta.validation.Valid;
+import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -27,6 +29,11 @@ public class UserController {
     @GetMapping("/me")
     public ResponseEntity<ApiResponse<UserResponse>> me() {
         return ResponseEntity.ok(ApiResponse.success(userService.getCurrentUser(SecurityUtils.requireCurrentUserId())));
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<ApiResponse<UserResponse>> getUser(@PathVariable UUID id) {
+        return ResponseEntity.ok(ApiResponse.success(userService.getUser(id)));
     }
 
     @PutMapping("/me")

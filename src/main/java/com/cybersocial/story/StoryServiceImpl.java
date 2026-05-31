@@ -30,6 +30,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class StoryServiceImpl implements StoryService {
 
+    private static final int DEFAULT_IMAGE_STORY_DURATION_MS = 20_000;
+    private static final int DEFAULT_MUSIC_DURATION_MS = 20_000;
+
     private final StoryRepository storyRepository;
     private final StoryViewRepository storyViewRepository;
     private final StoryReactionRepository storyReactionRepository;
@@ -89,14 +92,17 @@ public class StoryServiceImpl implements StoryService {
         String caption = normalizeOptional(request.caption());
         StoryVisibility visibility = request.visibility() == null ? StoryVisibility.FRIENDS : request.visibility();
         MusicTrack musicTrack = resolveMusicTrack(request, mediaRequest);
+        Integer musicStartMs = resolveMusicStartMs(musicTrack, request.musicStartMs());
+        Integer musicDurationMs = resolveMusicDurationMs(musicTrack, request.musicDurationMs());
+        validateMusicWindow(musicTrack, musicStartMs, musicDurationMs);
 
         Story story = Story.builder()
                 .author(author)
                 .caption(caption)
                 .visibility(visibility)
                 .musicTrack(musicTrack)
-                .musicStartMs(musicTrack == null ? null : request.musicStartMs())
-                .musicDurationMs(musicTrack == null ? null : request.musicDurationMs())
+                .musicStartMs(musicStartMs)
+                .musicDurationMs(musicDurationMs)
                 .build();
 
         StoryMedia media = StoryMedia.builder()
@@ -106,7 +112,7 @@ public class StoryServiceImpl implements StoryService {
                 .thumbnailUrl(normalizeOptional(mediaRequest.thumbnailUrl()))
                 .width(mediaRequest.width())
                 .height(mediaRequest.height())
-                .durationMs(mediaRequest.durationMs())
+                .durationMs(resolveMediaDurationMs(mediaRequest))
                 .build();
         story.setMedia(media);
 
@@ -191,6 +197,39 @@ public class StoryServiceImpl implements StoryService {
             throw new BadRequestException("Music track is not available");
         }
         return track;
+    }
+
+    private Integer resolveMediaDurationMs(StoryMediaRequest mediaRequest) {
+        if (mediaRequest.mediaType() == StoryMediaType.IMAGE && mediaRequest.durationMs() == null) {
+            return DEFAULT_IMAGE_STORY_DURATION_MS;
+        }
+        return mediaRequest.durationMs();
+    }
+
+    private Integer resolveMusicStartMs(MusicTrack musicTrack, Integer musicStartMs) {
+        if (musicTrack == null) {
+            return null;
+        }
+        return musicStartMs == null ? 0 : musicStartMs;
+    }
+
+    private Integer resolveMusicDurationMs(MusicTrack musicTrack, Integer musicDurationMs) {
+        if (musicTrack == null) {
+            return null;
+        }
+        return musicDurationMs == null ? DEFAULT_MUSIC_DURATION_MS : musicDurationMs;
+    }
+
+    private void validateMusicWindow(MusicTrack musicTrack, Integer musicStartMs, Integer musicDurationMs) {
+        if (musicTrack == null) {
+            return;
+        }
+
+        long musicEndMs = (long) musicStartMs + musicDurationMs;
+        long trackDurationMs = musicTrack.getDurationSeconds() * 1_000L;
+        if (musicEndMs > trackDurationMs) {
+            throw new BadRequestException("Music segment exceeds track duration");
+        }
     }
 
     private Story getVisibleStory(UUID currentUserId, UUID storyId) {
