@@ -8,7 +8,6 @@ import com.cybersocial.post.dto.PostCommentResponse;
 import com.cybersocial.post.dto.PostRequest;
 import com.cybersocial.post.dto.PostResponse;
 import com.cybersocial.post.dto.PostShareRequest;
-import com.cybersocial.post.dto.PostShareResponse;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;
@@ -98,7 +97,7 @@ public class PostController {
     }
 
     @PostMapping("/{id}/shares")
-    public ResponseEntity<ApiResponse<PostShareResponse>> sharePost(
+    public ResponseEntity<ApiResponse<PostResponse>> sharePost(
             @PathVariable UUID id,
             @Valid @RequestBody PostShareRequest request
     ) {

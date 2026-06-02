@@ -47,6 +47,10 @@ public class Post {
     @JoinColumn(name = "author_id", nullable = false)
     private User author;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "shared_post_id")
+    private Post sharedPost;
+
     @Column(nullable = false, columnDefinition = "text")
     private String content;
 

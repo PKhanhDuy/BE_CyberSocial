@@ -6,7 +6,6 @@ import com.cybersocial.post.dto.PostCommentResponse;
 import com.cybersocial.post.dto.PostRequest;
 import com.cybersocial.post.dto.PostResponse;
 import com.cybersocial.post.dto.PostShareRequest;
-import com.cybersocial.post.dto.PostShareResponse;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.data.domain.Pageable;
@@ -31,5 +30,5 @@ public interface PostService {
 
     void deleteComment(UUID currentUserId, UUID postId, UUID commentId);
 
-    PostShareResponse sharePost(UUID currentUserId, UUID postId, PostShareRequest request);
+    PostResponse sharePost(UUID currentUserId, UUID postId, PostShareRequest request);
 }

@@ -10,7 +10,6 @@ import com.cybersocial.post.dto.PostCommentResponse;
 import com.cybersocial.post.dto.PostRequest;
 import com.cybersocial.post.dto.PostResponse;
 import com.cybersocial.post.dto.PostShareRequest;
-import com.cybersocial.post.dto.PostShareResponse;
 import com.cybersocial.user.User;
 import java.util.List;
 import java.util.UUID;
@@ -165,17 +164,25 @@ public class PostServiceImpl implements PostService {
 
     @Override
     @Transactional
-    public PostShareResponse sharePost(UUID currentUserId, UUID postId, PostShareRequest request) {
-        Post post = getPost(postId);
+    public PostResponse sharePost(UUID currentUserId, UUID postId, PostShareRequest request) {
+        Post sharedPost = getPost(postId);
         User user = getUser(currentUserId);
         String content = normalizeOptional(request.content());
 
         PostShare share = postShareRepository.save(PostShare.builder()
-                .post(post)
+                .post(sharedPost)
                 .user(user)
                 .content(content)
                 .build());
-        return PostShareResponse.from(share);
+
+        Post repost = postRepository.save(Post.builder()
+                .author(user)
+                .sharedPost(sharedPost)
+                .content(share.getContent() == null ? "" : share.getContent())
+                .visibility(PostVisibility.PUBLIC)
+                .mediaUrls(List.of())
+                .build());
+        return toResponse(repost, currentUserId);
     }
 
     private Post getPost(UUID postId) {
