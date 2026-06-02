@@ -10,6 +10,8 @@ public interface UserService {
 
     UserResponse getCurrentUser(UUID currentUserId);
 
+    UserResponse getUser(UUID userId);
+
     UserResponse updateCurrentUser(UUID currentUserId, UpdateUserRequest request);
 
     UserResponse updateCurrentUserAvatar(UUID currentUserId, UpdateAvatarRequest request);

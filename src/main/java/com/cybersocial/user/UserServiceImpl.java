@@ -22,13 +22,19 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional(readOnly = true)
     public UserResponse getCurrentUser(UUID currentUserId) {
-        return UserResponse.from(getUser(currentUserId));
+        return UserResponse.from(getUserEntity(currentUserId));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public UserResponse getUser(UUID userId) {
+        return UserResponse.from(getUserEntity(userId));
     }
 
     @Override
     @Transactional
     public UserResponse updateCurrentUser(UUID currentUserId, UpdateUserRequest request) {
-        User user = getUser(currentUserId);
+        User user = getUserEntity(currentUserId);
         user.setDisplayName(request.displayName().trim());
         return UserResponse.from(user);
     }
@@ -36,7 +42,7 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public UserResponse updateCurrentUserAvatar(UUID currentUserId, UpdateAvatarRequest request) {
-        User user = getUser(currentUserId);
+        User user = getUserEntity(currentUserId);
         user.setAvatarUrl(request.avatarUrl().trim());
         return UserResponse.from(user);
     }
@@ -44,12 +50,12 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public UserResponse updateCurrentUserCover(UUID currentUserId, UpdateCoverRequest request) {
-        User user = getUser(currentUserId);
+        User user = getUserEntity(currentUserId);
         user.setCoverUrl(request.coverUrl().trim());
         return UserResponse.from(user);
     }
 
-    private User getUser(UUID userId) {
+    private User getUserEntity(UUID userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
     }

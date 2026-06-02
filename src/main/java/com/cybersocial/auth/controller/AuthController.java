@@ -1,11 +1,14 @@
 package com.cybersocial.auth.controller;
 
 import com.cybersocial.auth.dto.AuthResponse;
+import com.cybersocial.auth.dto.ChangePasswordRequest;
+import com.cybersocial.auth.dto.ForgotPasswordRequest;
 import com.cybersocial.auth.dto.LoginRequest;
 import com.cybersocial.auth.dto.RegisterRequest;
 import com.cybersocial.auth.service.AuthService;
 import com.cybersocial.auth.service.AuthenticationResult;
 import com.cybersocial.common.response.ApiResponse;
+import com.cybersocial.common.util.SecurityUtils;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import java.time.Duration;
@@ -48,6 +51,18 @@ public class AuthController {
         AuthenticationResult result = authService.login(request);
         addRefreshCookie(response, result);
         return ResponseEntity.ok(ApiResponse.success("Logged in successfully", result.response()));
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<ApiResponse<Void>> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        authService.forgotPassword(request);
+        return ResponseEntity.ok(ApiResponse.success("Temporary password has been sent to your registered email", null));
+    }
+
+    @PostMapping("/change-password")
+    public ResponseEntity<ApiResponse<Void>> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
+        authService.changePassword(SecurityUtils.requireCurrentUserId(), request);
+        return ResponseEntity.ok(ApiResponse.success("Password changed successfully", null));
     }
 
     @PostMapping("/refresh")

@@ -3,9 +3,14 @@ package com.cybersocial.post;
 import com.cybersocial.common.response.ApiResponse;
 import com.cybersocial.common.response.PagedResponse;
 import com.cybersocial.common.util.SecurityUtils;
+import com.cybersocial.post.dto.PostCommentRequest;
+import com.cybersocial.post.dto.PostCommentResponse;
 import com.cybersocial.post.dto.PostRequest;
 import com.cybersocial.post.dto.PostResponse;
+import com.cybersocial.post.dto.PostShareRequest;
+import com.cybersocial.post.dto.PostShareResponse;
 import jakarta.validation.Valid;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -34,16 +39,17 @@ public class PostController {
     @GetMapping
     public ResponseEntity<ApiResponse<PagedResponse<PostResponse>>> listPosts(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) UUID authorId
     ) {
         int normalizedSize = Math.min(Math.max(size, 1), 100);
         Pageable pageable = PageRequest.of(Math.max(page, 0), normalizedSize, Sort.by(Sort.Direction.DESC, "createdAt"));
-        return ResponseEntity.ok(ApiResponse.success(postService.findPosts(pageable)));
+        return ResponseEntity.ok(ApiResponse.success(postService.findPosts(SecurityUtils.requireCurrentUserId(), pageable, authorId)));
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<PostResponse>> getPost(@PathVariable UUID id) {
-        return ResponseEntity.ok(ApiResponse.success(postService.findPost(id)));
+        return ResponseEntity.ok(ApiResponse.success(postService.findPost(SecurityUtils.requireCurrentUserId(), id)));
     }
 
     @PostMapping
@@ -56,5 +62,47 @@ public class PostController {
     public ResponseEntity<ApiResponse<Void>> deletePost(@PathVariable UUID id) {
         postService.deletePost(SecurityUtils.requireCurrentUserId(), id);
         return ResponseEntity.ok(ApiResponse.success("Post deleted", null));
+    }
+
+    @PostMapping("/{id}/likes")
+    public ResponseEntity<ApiResponse<PostResponse>> likePost(@PathVariable UUID id) {
+        return ResponseEntity.ok(ApiResponse.success("Post liked", postService.likePost(SecurityUtils.requireCurrentUserId(), id)));
+    }
+
+    @DeleteMapping("/{id}/likes")
+    public ResponseEntity<ApiResponse<PostResponse>> unlikePost(@PathVariable UUID id) {
+        return ResponseEntity.ok(ApiResponse.success("Post unliked", postService.unlikePost(SecurityUtils.requireCurrentUserId(), id)));
+    }
+
+    @GetMapping("/{id}/comments")
+    public ResponseEntity<ApiResponse<List<PostCommentResponse>>> listComments(@PathVariable UUID id) {
+        return ResponseEntity.ok(ApiResponse.success(postService.findComments(id)));
+    }
+
+    @PostMapping("/{id}/comments")
+    public ResponseEntity<ApiResponse<PostCommentResponse>> commentPost(
+            @PathVariable UUID id,
+            @Valid @RequestBody PostCommentRequest request
+    ) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success("Comment created", postService.commentPost(SecurityUtils.requireCurrentUserId(), id, request)));
+    }
+
+    @DeleteMapping("/{postId}/comments/{commentId}")
+    public ResponseEntity<ApiResponse<Void>> deleteComment(
+            @PathVariable UUID postId,
+            @PathVariable UUID commentId
+    ) {
+        postService.deleteComment(SecurityUtils.requireCurrentUserId(), postId, commentId);
+        return ResponseEntity.ok(ApiResponse.success("Comment deleted", null));
+    }
+
+    @PostMapping("/{id}/shares")
+    public ResponseEntity<ApiResponse<PostShareResponse>> sharePost(
+            @PathVariable UUID id,
+            @Valid @RequestBody PostShareRequest request
+    ) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success("Post shared", postService.sharePost(SecurityUtils.requireCurrentUserId(), id, request)));
     }
 }

@@ -25,4 +25,10 @@ public class ImageUploadController {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Image uploaded", imageUploadService.uploadImage(file)));
     }
+
+    @PostMapping(value = "/videos", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<ImageUploadResponse>> uploadVideo(@RequestPart("file") MultipartFile file) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success("Video uploaded", imageUploadService.uploadVideo(file)));
+    }
 }

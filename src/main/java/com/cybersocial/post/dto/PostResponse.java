@@ -14,10 +14,24 @@ public record PostResponse(
         String content,
         PostVisibility visibility,
         List<String> mediaUrls,
+        long likeCount,
+        long commentCount,
+        long shareCount,
+        boolean likedByCurrentUser,
         Instant createdAt,
         Instant updatedAt
 ) {
     public static PostResponse from(Post post) {
+        return from(post, 0, 0, 0, false);
+    }
+
+    public static PostResponse from(
+            Post post,
+            long likeCount,
+            long commentCount,
+            long shareCount,
+            boolean likedByCurrentUser
+    ) {
         List<String> mediaUrls = post.getMediaUrls() == null ? List.of() : List.copyOf(post.getMediaUrls());
         return new PostResponse(
                 post.getId(),
@@ -27,6 +41,10 @@ public record PostResponse(
                 post.getContent(),
                 post.getVisibility(),
                 mediaUrls,
+                likeCount,
+                commentCount,
+                shareCount,
+                likedByCurrentUser,
                 post.getCreatedAt(),
                 post.getUpdatedAt()
         );
