@@ -58,6 +58,10 @@ public class JwtUtil {
         return parseClaims(token).getSubject();
     }
 
+    public UUID extractUserId(String token) {
+        return UUID.fromString(parseClaims(token).get("userId", String.class));
+    }
+
     public long accessTokenTtlSeconds() {
         return properties.accessTokenMinutes() * 60;
     }

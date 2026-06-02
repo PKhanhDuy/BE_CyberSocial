@@ -13,6 +13,8 @@ import com.cybersocial.message.dto.MessageReactionRequest;
 import com.cybersocial.message.dto.MessageReactionResponse;
 import com.cybersocial.message.dto.MessageResponse;
 import com.cybersocial.message.dto.MessageSendRequest;
+import com.cybersocial.message.websocket.MessageSocketEvent;
+import com.cybersocial.message.websocket.MessageSocketPublisher;
 import com.cybersocial.user.User;
 import java.time.Instant;
 import java.util.List;
@@ -30,19 +32,22 @@ public class MessageServiceImpl implements MessageService {
     private final MessageReactionRepository reactionRepository;
     private final FriendshipRepository friendshipRepository;
     private final UserRepository userRepository;
+    private final MessageSocketPublisher socketPublisher;
 
     public MessageServiceImpl(
             MessageConversationRepository conversationRepository,
             MessageRepository messageRepository,
             MessageReactionRepository reactionRepository,
             FriendshipRepository friendshipRepository,
-            UserRepository userRepository
+            UserRepository userRepository,
+            MessageSocketPublisher socketPublisher
     ) {
         this.conversationRepository = conversationRepository;
         this.messageRepository = messageRepository;
         this.reactionRepository = reactionRepository;
         this.friendshipRepository = friendshipRepository;
         this.userRepository = userRepository;
+        this.socketPublisher = socketPublisher;
     }
 
     @Override
@@ -115,7 +120,9 @@ public class MessageServiceImpl implements MessageService {
                 .build());
 
         conversation.setUpdatedAt(Instant.now());
-        return toResponse(message);
+        MessageResponse response = toResponse(message);
+        socketPublisher.publishToParticipants(conversation, MessageSocketEvent.messageCreated(response));
+        return response;
     }
 
     @Override
@@ -132,7 +139,12 @@ public class MessageServiceImpl implements MessageService {
                         .user(user)
                         .build());
         reaction.setEmoji(emoji);
-        return MessageReactionResponse.from(reactionRepository.save(reaction));
+        MessageReactionResponse response = MessageReactionResponse.from(reactionRepository.save(reaction));
+        socketPublisher.publishToParticipants(
+                message.getConversation(),
+                MessageSocketEvent.reactionUpdated(message.getConversation().getId(), response)
+        );
+        return response;
     }
 
     @Override
@@ -141,7 +153,13 @@ public class MessageServiceImpl implements MessageService {
         Message message = getMessage(messageId);
         ensureParticipant(currentUserId, message.getConversation());
         reactionRepository.findByMessageIdAndUserId(messageId, currentUserId)
-                .ifPresent(reactionRepository::delete);
+                .ifPresent(reaction -> {
+                    reactionRepository.delete(reaction);
+                    socketPublisher.publishToParticipants(
+                            message.getConversation(),
+                            MessageSocketEvent.reactionDeleted(message.getConversation().getId(), messageId, currentUserId)
+                    );
+                });
     }
 
     private MessageResponse toResponse(Message message) {
