@@ -1,16 +1,38 @@
-# Build output
-target/
-out/
-bin/
-
-# Maven wrapper
-.mvn/wrapper/maven-wrapper.jar
-!.mvn/wrapper/maven-wrapper.properties
-
 # Environment files
 .env
 .env.*
 !.env.example
+
+# Java / Maven
+target/
+out/
+bin/
+.mvn/wrapper/maven-wrapper.jar
+!.mvn/wrapper/maven-wrapper.properties
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Python virtual environments
+.venv/
+venv/
+env/
+
+# Python tooling
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+dist/
+build/
+*.egg-info/
+
+# Docker/local data
+docker-data/
+*.pid
 
 # Logs
 *.log

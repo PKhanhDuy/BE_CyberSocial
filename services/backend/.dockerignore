@@ -1,0 +1,14 @@
+target/
+out/
+bin/
+
+.env
+.env.*
+
+.git/
+.idea/
+.vscode/
+*.iml
+
+*.log
+logs/
