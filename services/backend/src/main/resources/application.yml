@@ -59,6 +59,8 @@ management:
         enabled: true
 
 app:
+  ai-service:
+    url: ${AI_SERVICE_URL:http://localhost:8000}
   security:
     jwt:
       secret: ${JWT_SECRET}

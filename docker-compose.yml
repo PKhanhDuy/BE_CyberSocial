@@ -20,6 +20,9 @@ services:
     restart: unless-stopped
     environment:
       PYTHONUNBUFFERED: "1"
+      TGNN_MODEL_PATH: ${TGNN_MODEL_PATH:-models/tgnn_deployment.pth}
+      TGNN_ST_MODEL_NAME: ${TGNN_ST_MODEL_NAME:-sentence-transformers/all-MiniLM-L6-v2}
+      TGNN_THRESHOLD: ${TGNN_THRESHOLD:-0.5}
     ports:
       - "${AI_SERVICE_PORT:-8000}:8000"
     healthcheck:

@@ -34,6 +34,14 @@ build/
 docker-data/
 *.pid
 
+# Model artifacts
+*.pt
+*.pth
+*.onnx
+*.joblib
+*.pkl
+!services/ai-service/models/README.md
+
 # Logs
 *.log
 logs/
