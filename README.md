@@ -4,8 +4,8 @@ Production-ready Spring Boot 3.x backend for the CyberSocial frontend applicatio
 
 ## Prerequisites
 
-- Java 21
-- Docker, for local PostgreSQL
+- Java 17
+- Docker, for local PostgreSQL/Redis or Docker Compose
 - Maven Wrapper is included, so a local Maven install is optional
 
 ## Tech Stack
@@ -18,7 +18,7 @@ Production-ready Spring Boot 3.x backend for the CyberSocial frontend applicatio
 - JWT with `jjwt`
 - Lombok
 
-## Start PostgreSQL
+## Start PostgreSQL And Redis
 
 ```bash
 docker run -d \
@@ -28,6 +28,29 @@ docker run -d \
 -e POSTGRES_DB=cybersocial \
 postgres
 ```
+
+Redis stores short-lived post statistics. The backend automatically falls back to PostgreSQL when Redis is unavailable.
+
+```bash
+docker run -d --name cybersocial-redis -p 6379:6379 redis:7-alpine
+```
+
+## Run With Docker Compose
+
+From the repository root:
+
+```bash
+docker compose up --build
+```
+
+Services:
+
+- Backend: `http://localhost:8080`
+- AI service: `http://localhost:8000`
+- PostgreSQL: `localhost:5432`
+- Redis: `localhost:6379`
+
+Copy `.env.example` to `.env` if you want to override the default local values used by `docker-compose.yml`.
 
 PowerShell equivalent:
 
@@ -58,13 +81,16 @@ CLOUDINARY_API_KEY=your-api-key
 CLOUDINARY_API_SECRET=your-api-secret
 CLOUDINARY_FOLDER=cybersocial/posts
 UPLOAD_MAX_IMAGE_SIZE=5MB
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_PASSWORD=
 ```
 
 For production, replace `JWT_SECRET`, database credentials, and the CORS production placeholder in `application.yml`.
 
 ## Run
 
-From this directory:
+From `services/backend`:
 
 ```bash
 ./mvnw spring-boot:run
