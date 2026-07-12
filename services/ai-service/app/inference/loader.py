@@ -19,6 +19,7 @@ class LoadedArtifact:
     sentence_transformer: SentenceTransformer
     threshold: float
     num_users: int
+    tige_temperature: float = 1.0
     user2idx: dict[str, int] = field(default_factory=dict)
     event_type2idx: dict[str, int] = field(default_factory=dict)
     edge_feature_names: list[str] = field(default_factory=lambda: list(EDGE_FEATURE_NAMES))
@@ -69,7 +70,8 @@ def load_artifact(model_path: Path | None = None, device: torch.device | None = 
         raise FileNotFoundError(f"TGNN checkpoint not found at {path}")
 
     resolved_device = device or torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    payload = torch.load(path, map_location=resolved_device)
+    # Deployment checkpoints include numpy arrays; trusted artifact from our export pipeline.
+    payload = torch.load(path, map_location=resolved_device, weights_only=False)
     if not isinstance(payload, dict):
         raise ValueError("Checkpoint must be a dictionary payload")
 
@@ -105,6 +107,12 @@ def load_artifact(model_path: Path | None = None, device: torch.device | None = 
 
     threshold_value = payload.get("threshold")
     threshold = float(threshold_value if threshold_value is not None else settings.threshold)
+    tige_temperature_value = payload.get("tige_temperature")
+    if tige_temperature_value is None:
+        tige_temperature_value = payload.get("T_robust")
+    tige_temperature = float(
+        tige_temperature_value if tige_temperature_value is not None else settings.tige_temperature
+    )
 
     feature_names = payload.get("EDGE_FEATURE_NAMES")
     resolved_feature_names = resolve_feature_names(list(feature_names) if feature_names else None)
@@ -114,6 +122,7 @@ def load_artifact(model_path: Path | None = None, device: torch.device | None = 
         config=config,
         sentence_transformer=sentence_transformer,
         threshold=threshold,
+        tige_temperature=tige_temperature,
         num_users=num_users,
         user2idx={str(key): int(value) for key, value in (payload.get("user2idx") or {}).items()},
         event_type2idx={

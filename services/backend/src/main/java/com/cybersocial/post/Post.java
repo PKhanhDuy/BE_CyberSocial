@@ -68,6 +68,13 @@ public class Post {
     @Column(name = "is_synthetic", nullable = false)
     private boolean synthetic = false;
 
+    @Builder.Default
+    @Column(nullable = false)
+    private boolean hidden = false;
+
+    @Column(name = "hidden_at")
+    private Instant hiddenAt;
+
     @CreatedDate
     @Column(nullable = false, updatable = false)
     private Instant createdAt;

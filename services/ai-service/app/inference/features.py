@@ -1,4 +1,5 @@
 import math
+from typing import Iterable
 
 import numpy as np
 
@@ -24,6 +25,20 @@ EDGE_FEATURE_NAMES: list[str] = [
     "c_lifespan",
     "c_burstiness",
 ]
+
+PROFILE_FEATURE_NAMES: tuple[str, ...] = (
+    "u_log_followers",
+    "u_log_following",
+    "u_log_statuses",
+    "u_foll_ratio",
+    "u_acct_age_log",
+    "u_has_profile",
+)
+
+TREE_FEATURE_NAMES: tuple[str, ...] = (
+    "t_depth",
+    "t_root_outdeg",
+)
 
 DEFAULT_EVENT_TYPE2IDX: dict[str, int] = {
     "tweet": 0,
@@ -59,17 +74,13 @@ def _compute_cascade(raw_relative_times: list[float], event_count: int) -> dict[
     return {"c_speed": c_speed, "c_lifespan": c_lifespan, "c_burstiness": burstiness}
 
 
-def _profile_values(event: InteractionEvent, timestamp_unix: float | None) -> dict[str, float]:
+def _profile_values(
+    event: InteractionEvent,
+    timestamp_unix: float | None,
+) -> tuple[dict[str, float], bool]:
     profile = event.userProfile
     if profile is None:
-        return {
-            "u_log_followers": 0.0,
-            "u_log_following": 0.0,
-            "u_log_statuses": 0.0,
-            "u_foll_ratio": 0.0,
-            "u_acct_age_log": 0.0,
-            "u_has_profile": 0.0,
-        }
+        return {}, True
 
     followers = float(profile.logFollowers or 0.0)
     following = float(profile.logFollowing or 0.0)
@@ -86,22 +97,41 @@ def _profile_values(event: InteractionEvent, timestamp_unix: float | None) -> di
         "u_foll_ratio": followers - following,
         "u_acct_age_log": age_log,
         "u_has_profile": float(profile.hasProfile or 0.0),
-    }
+    }, False
 
 
-def _tree_values(event: InteractionEvent) -> dict[str, float]:
+def _tree_values(event: InteractionEvent) -> tuple[dict[str, float], bool]:
     tree = event.tree
     if tree is None:
-        return {"t_depth": 0.0, "t_root_outdeg": 0.0}
+        return {}, True
+
     return {
         "t_depth": _log1p(float(tree.depth or 0.0)),
         "t_root_outdeg": _log1p(float(tree.rootOutDegree or 0.0)),
+    }, False
+
+
+def _apply_train_mean_for_missing(
+    rows: list[dict[str, float]],
+    edge_mean: np.ndarray | None,
+    missing_flags: list[dict[str, bool]],
+) -> None:
+    if edge_mean is None:
+        return
+
+    mean_by_name = {
+        name: float(edge_mean[index]) for index, name in enumerate(EDGE_FEATURE_NAMES)
     }
+    for row, flags in zip(rows, missing_flags, strict=True):
+        for feature_name in (*PROFILE_FEATURE_NAMES, *TREE_FEATURE_NAMES):
+            if flags.get(feature_name, False):
+                row[feature_name] = mean_by_name[feature_name]
 
 
 def build_raw_feature_rows(
     request: AnalyzeRequest,
     event_type2idx: dict[str, int] | None = None,
+    edge_mean: np.ndarray | None = None,
 ) -> list[dict[str, float]]:
     mapping = event_type2idx or DEFAULT_EVENT_TYPE2IDX
     events = list(request.events)
@@ -119,6 +149,7 @@ def build_raw_feature_rows(
 
     raw_relative_times: list[float] = []
     rows: list[dict[str, float]] = []
+    missing_flags: list[dict[str, bool]] = []
     previous_relative = 0.0
 
     for index, event in enumerate(sorted_events):
@@ -142,9 +173,26 @@ def build_raw_feature_rows(
             "text_len": _log1p(text_len),
             "event_type_idx": event_type_idx,
         }
-        row.update(_profile_values(event, event.timestampUnix))
-        row.update(_tree_values(event))
+        flags: dict[str, bool] = {}
+
+        profile_values, profile_missing = _profile_values(event, event.timestampUnix)
+        if profile_missing:
+            for feature_name in PROFILE_FEATURE_NAMES:
+                row[feature_name] = 0.0
+                flags[feature_name] = True
+        else:
+            row.update(profile_values)
+
+        tree_values, tree_missing = _tree_values(event)
+        if tree_missing:
+            for feature_name in TREE_FEATURE_NAMES:
+                row[feature_name] = 0.0
+                flags[feature_name] = True
+        else:
+            row.update(tree_values)
+
         rows.append(row)
+        missing_flags.append(flags)
 
     cascade = _compute_cascade(raw_relative_times, len(rows))
     cascade_override = next((event.cascade for event in sorted_events if event.cascade), None)
@@ -157,10 +205,11 @@ def build_raw_feature_rows(
     for row in rows:
         row.update(cascade)
 
+    _apply_train_mean_for_missing(rows, edge_mean, missing_flags)
     return rows
 
 
-def rows_to_matrix(rows: list[dict[str, float]]) -> np.ndarray:
+def rows_to_matrix(rows: Iterable[dict[str, float]]) -> np.ndarray:
     return np.asarray(
         [[row[name] for name in EDGE_FEATURE_NAMES] for row in rows],
         dtype=np.float32,
@@ -186,7 +235,11 @@ def build_edge_matrix(
     edge_std: np.ndarray | None,
     event_type2idx: dict[str, int] | None = None,
 ) -> np.ndarray:
-    rows = build_raw_feature_rows(request, event_type2idx=event_type2idx)
+    rows = build_raw_feature_rows(
+        request,
+        event_type2idx=event_type2idx,
+        edge_mean=edge_mean,
+    )
     raw_matrix = rows_to_matrix(rows)
     return normalize_features(raw_matrix, edge_mean, edge_std)
 

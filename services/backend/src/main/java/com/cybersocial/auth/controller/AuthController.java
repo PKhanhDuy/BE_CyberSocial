@@ -5,6 +5,8 @@ import com.cybersocial.auth.dto.ChangePasswordRequest;
 import com.cybersocial.auth.dto.ForgotPasswordRequest;
 import com.cybersocial.auth.dto.LoginRequest;
 import com.cybersocial.auth.dto.RegisterRequest;
+import com.cybersocial.auth.dto.ResetPasswordRequest;
+import com.cybersocial.auth.dto.ResetTokenValidationResponse;
 import com.cybersocial.auth.service.AuthService;
 import com.cybersocial.auth.service.AuthenticationResult;
 import com.cybersocial.common.response.ApiResponse;
@@ -16,9 +18,11 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CookieValue;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -56,7 +60,24 @@ public class AuthController {
     @PostMapping("/forgot-password")
     public ResponseEntity<ApiResponse<Void>> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
         authService.forgotPassword(request);
-        return ResponseEntity.ok(ApiResponse.success("Temporary password has been sent to your registered email", null));
+        return ResponseEntity.ok(ApiResponse.success(
+                "If this email is registered, a password reset link has been sent",
+                null
+        ));
+    }
+
+    @GetMapping("/reset-password/validate")
+    public ResponseEntity<ApiResponse<ResetTokenValidationResponse>> validateResetToken(
+            @RequestParam("token") String token
+    ) {
+        authService.validateResetToken(token);
+        return ResponseEntity.ok(ApiResponse.success("Reset token is valid", new ResetTokenValidationResponse(true)));
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<ApiResponse<Void>> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        authService.resetPassword(request);
+        return ResponseEntity.ok(ApiResponse.success("Password reset successfully", null));
     }
 
     @PostMapping("/change-password")

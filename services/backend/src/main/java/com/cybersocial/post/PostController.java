@@ -8,6 +8,7 @@ import com.cybersocial.post.dto.PostCommentResponse;
 import com.cybersocial.post.dto.PostRequest;
 import com.cybersocial.post.dto.PostResponse;
 import com.cybersocial.post.dto.PostShareRequest;
+import com.cybersocial.post.dto.PostVerificationResponse;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import org.springframework.data.domain.PageRequest;
@@ -43,6 +44,18 @@ public class PostController {
         int normalizedSize = Math.min(Math.max(size, 1), 100);
         Pageable pageable = PageRequest.of(Math.max(page, 0), normalizedSize, Sort.by(Sort.Direction.DESC, "createdAt"));
         return ResponseEntity.ok(ApiResponse.success(postService.findPosts(SecurityUtils.requireCurrentUserId(), pageable, authorId)));
+    }
+
+    @GetMapping("/verified")
+    public ResponseEntity<ApiResponse<PagedResponse<PostResponse>>> listVerifiedPosts(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        int normalizedSize = Math.min(Math.max(size, 1), 100);
+        Pageable pageable = PageRequest.of(Math.max(page, 0), normalizedSize);
+        return ResponseEntity.ok(ApiResponse.success(
+                postService.findVerifiedPosts(SecurityUtils.requireCurrentUserId(), pageable)
+        ));
     }
 
     @GetMapping("/{id}")
@@ -99,6 +112,11 @@ public class PostController {
     ) {
         postService.deleteComment(SecurityUtils.requireCurrentUserId(), postId, commentId);
         return ResponseEntity.ok(ApiResponse.success("Comment deleted", null));
+    }
+
+    @GetMapping("/{id}/verification")
+    public ResponseEntity<ApiResponse<PostVerificationResponse>> getVerification(@PathVariable UUID id) {
+        return ResponseEntity.ok(ApiResponse.success(postService.findVerification(id)));
     }
 
     @PostMapping("/{id}/shares")

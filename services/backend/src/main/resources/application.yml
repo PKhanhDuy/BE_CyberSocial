@@ -61,6 +61,16 @@ management:
 app:
   ai-service:
     url: ${AI_SERVICE_URL:http://localhost:8000}
+  ai-analysis:
+    enabled: ${AI_AUTO_ANALYSIS_ENABLED:true}
+    thresholds:
+      - 5
+      - 15
+      - 30
+    debounce-minutes: ${AI_AUTO_ANALYSIS_DEBOUNCE_MINUTES:3}
+    max-tiers: 3
+    include-synthetic-posts: false
+    timeout-seconds: ${AI_SERVICE_TIMEOUT_SECONDS:90}
   security:
     jwt:
       secret: ${JWT_SECRET}
@@ -89,3 +99,7 @@ app:
       - video/quicktime
   mail:
     from: ${MAIL_FROM:${MAIL_USERNAME:}}
+  frontend:
+    base-url: ${FRONTEND_BASE_URL:http://localhost:5173}
+  password-reset:
+    expires-minutes: ${PASSWORD_RESET_EXPIRES_MINUTES:30}

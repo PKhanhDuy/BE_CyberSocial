@@ -1,0 +1,89 @@
+package com.cybersocial.post;
+
+import com.cybersocial.ai.AiAnalysisProperties;
+import com.cybersocial.common.exception.ResourceNotFoundException;
+import com.cybersocial.post.dto.PostVerificationResponse;
+import java.util.UUID;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+public class PostVerificationService {
+
+    private final PostVerificationRepository postVerificationRepository;
+    private final PostRepository postRepository;
+    private final PostStatisticsService postStatisticsService;
+    private final AiAnalysisProperties aiAnalysisProperties;
+
+    public PostVerificationService(
+            PostVerificationRepository postVerificationRepository,
+            PostRepository postRepository,
+            PostStatisticsService postStatisticsService,
+            AiAnalysisProperties aiAnalysisProperties
+    ) {
+        this.postVerificationRepository = postVerificationRepository;
+        this.postRepository = postRepository;
+        this.postStatisticsService = postStatisticsService;
+        this.aiAnalysisProperties = aiAnalysisProperties;
+    }
+
+    @Transactional(readOnly = true)
+    public PostVerificationResponse findByPostId(UUID postId) {
+        if (!postRepository.existsById(postId)) {
+            throw new ResourceNotFoundException("Post not found");
+        }
+
+        long totalInteractions = totalInteractions(postId);
+        int nextThreshold = nextThresholdFor(totalInteractions, 0);
+
+        return postVerificationRepository.findByPostId(postId)
+                .map(verification -> PostVerificationResponse.from(
+                        verification,
+                        totalInteractions,
+                        nextThresholdFor(totalInteractions, verification.getAnalysisTier())
+                ))
+                .orElseGet(() -> PostVerificationResponse.pending(postId, totalInteractions, nextThreshold));
+    }
+
+    @Transactional
+    public PostVerification getOrCreate(Post post) {
+        return postVerificationRepository.findByPostId(post.getId())
+                .orElseGet(() -> postVerificationRepository.save(PostVerification.builder()
+                        .post(post)
+                        .verificationStatus(PostVerificationStatus.PENDING)
+                        .analysisTier(0)
+                        .build()));
+    }
+
+    @Transactional
+    public PostVerification initializeForPost(Post post) {
+        return getOrCreate(post);
+    }
+
+    @Transactional(readOnly = true)
+    public boolean isAwaitingInteractionThreshold(UUID postId, PostVerification verification) {
+        if (verification != null && verification.getVerificationStatus() == PostVerificationStatus.ANALYZING) {
+            return false;
+        }
+
+        int completedTier = verification == null ? 0 : verification.getAnalysisTier();
+        long totalInteractions = totalInteractions(postId);
+        int nextThreshold = nextThresholdFor(totalInteractions, completedTier);
+        return nextThreshold > 0 && totalInteractions < nextThreshold;
+    }
+
+    public long totalInteractions(UUID postId) {
+        PostStatistics statistics = postStatisticsService.find(postId);
+        return statistics.likeCount() + statistics.commentCount() + statistics.shareCount();
+    }
+
+    public int nextThresholdFor(long totalInteractions, int completedTier) {
+        for (int index = completedTier; index < aiAnalysisProperties.thresholds().size(); index++) {
+            int threshold = aiAnalysisProperties.thresholds().get(index);
+            if (totalInteractions < threshold) {
+                return threshold;
+            }
+        }
+        return 0;
+    }
+}

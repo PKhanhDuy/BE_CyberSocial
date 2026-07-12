@@ -1,11 +1,30 @@
+from contextlib import asynccontextmanager
+import threading
+
 from fastapi import FastAPI, HTTPException, status
 
 from app.inference.predictor import ModelNotLoadedError, TGNNPredictor
 from app.schemas import AnalyzeRequest, AnalyzeResponse, HealthResponse
 from app.settings import settings
 
-app = FastAPI(title="CyberSocial AI Service", version="1.0.0")
-predictor = TGNNPredictor()
+predictor = TGNNPredictor(eager_load=False)
+_load_lock = threading.Lock()
+
+
+def _load_model_in_background() -> None:
+    with _load_lock:
+        if predictor.is_loaded or predictor.load_error:
+            return
+        predictor.load()
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    threading.Thread(target=_load_model_in_background, daemon=True, name="tgnn-loader").start()
+    yield
+
+
+app = FastAPI(title="CyberSocial AI Service", version="1.0.0", lifespan=lifespan)
 
 
 @app.get("/")

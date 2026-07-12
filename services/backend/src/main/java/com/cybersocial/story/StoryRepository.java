@@ -18,17 +18,23 @@ public interface StoryRepository extends JpaRepository<Story, UUID> {
             where s.archivedAt is null
               and s.expiresAt > :now
               and (
-                    s.visibility = com.cybersocial.story.StoryVisibility.PUBLIC
-                 or s.author.id = :currentUserId
+                    s.author.id = :currentUserId
                  or (
-                    s.visibility = com.cybersocial.story.StoryVisibility.FRIENDS
-                    and exists (
-                        select f.id from Friendship f
-                        where f.status = com.cybersocial.friend.FriendshipStatus.ACCEPTED
-                          and (
-                                (f.requester.id = :currentUserId and f.addressee.id = s.author.id)
-                             or (f.addressee.id = :currentUserId and f.requester.id = s.author.id)
-                          )
+                    s.visibility <> com.cybersocial.story.StoryVisibility.PRIVATE
+                    and (
+                        exists (
+                            select f.id from Friendship f
+                            where f.status = com.cybersocial.friend.FriendshipStatus.ACCEPTED
+                              and (
+                                    (f.requester.id = :currentUserId and f.addressee.id = s.author.id)
+                                 or (f.addressee.id = :currentUserId and f.requester.id = s.author.id)
+                              )
+                        )
+                        or exists (
+                            select uf.id from UserFollow uf
+                            where uf.follower.id = :currentUserId
+                              and uf.following.id = s.author.id
+                        )
                     )
                  )
               )
@@ -42,4 +48,11 @@ public interface StoryRepository extends JpaRepository<Story, UUID> {
 
     @EntityGraph(attributePaths = {"author", "media", "musicTrack"})
     Optional<Story> findById(UUID id);
+
+    @Query("""
+            select count(s) from Story s
+            where s.archivedAt is null
+              and s.expiresAt > :now
+            """)
+    long countActiveStories(@Param("now") java.time.Instant now);
 }

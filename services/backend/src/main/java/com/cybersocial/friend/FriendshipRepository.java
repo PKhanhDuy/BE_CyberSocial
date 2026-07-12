@@ -53,4 +53,6 @@ public interface FriendshipRepository extends JpaRepository<Friendship, UUID> {
             @Param("firstUserId") UUID firstUserId,
             @Param("secondUserId") UUID secondUserId
     );
+
+    long countByStatus(FriendshipStatus status);
 }

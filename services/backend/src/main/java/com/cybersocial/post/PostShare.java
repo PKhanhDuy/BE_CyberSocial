@@ -44,6 +44,14 @@ public class PostShare {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "parent_share_id")
+    private PostShare parentShare;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "repost_post_id")
+    private Post repostPost;
+
     @Column(columnDefinition = "text")
     private String content;
 

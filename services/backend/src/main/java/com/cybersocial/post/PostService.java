@@ -6,12 +6,15 @@ import com.cybersocial.post.dto.PostCommentResponse;
 import com.cybersocial.post.dto.PostRequest;
 import com.cybersocial.post.dto.PostResponse;
 import com.cybersocial.post.dto.PostShareRequest;
+import com.cybersocial.post.dto.PostVerificationResponse;
 import java.util.UUID;
 import org.springframework.data.domain.Pageable;
 
 public interface PostService {
 
     PagedResponse<PostResponse> findPosts(UUID currentUserId, Pageable pageable, UUID authorId);
+
+    PagedResponse<PostResponse> findVerifiedPosts(UUID currentUserId, Pageable pageable);
 
     PostResponse findPost(UUID currentUserId, UUID id);
 
@@ -30,4 +33,6 @@ public interface PostService {
     void deleteComment(UUID currentUserId, UUID postId, UUID commentId);
 
     PostResponse sharePost(UUID currentUserId, UUID postId, PostShareRequest request);
+
+    PostVerificationResponse findVerification(UUID postId);
 }

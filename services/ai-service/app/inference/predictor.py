@@ -7,6 +7,12 @@ from app.inference.users import build_user_index_tensor
 from app.inference.validation import resolve_inference_mode, validate_analyze_request
 from app.schemas import AnalyzeRequest, AnalyzeResponse, InteractionEvent
 from app.settings import settings
+from app.xai.explanation import (
+    build_event_attributions,
+    build_propagation_timeline,
+    build_tige_explanation,
+)
+from app.xai.tige import compute_tige
 
 
 class ModelNotLoadedError(RuntimeError):
@@ -30,11 +36,12 @@ def _events_for_inference(request: AnalyzeRequest) -> list[InteractionEvent]:
 
 
 class TGNNPredictor:
-    def __init__(self) -> None:
+    def __init__(self, eager_load: bool = True) -> None:
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.artifact: LoadedArtifact | None = None
         self.load_error: str | None = None
-        self.load()
+        if eager_load:
+            self.load()
 
     @property
     def is_loaded(self) -> bool:
@@ -63,7 +70,10 @@ class TGNNPredictor:
                 embedding = embedding.unsqueeze(0)
             return embedding.clone().to(self.device)
 
-    def predict(self, request: AnalyzeRequest) -> tuple[torch.Tensor, torch.Tensor, int]:
+    def _prepare_tensors(
+        self,
+        request: AnalyzeRequest,
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, list[InteractionEvent], int]:
         if self.artifact is None:
             raise ModelNotLoadedError(self.load_error or "TGNN model is not loaded")
 
@@ -86,29 +96,87 @@ class TGNNPredictor:
         with torch.no_grad():
             text_embedding = self.encode_text(request.text)
             text_h = self.artifact.model.text_encoder(text_embedding)
+
+        return text_h, user_idx, edge_feats, feature_events, edge_feats.size(0)
+
+    def predict(self, request: AnalyzeRequest) -> tuple[torch.Tensor, torch.Tensor, int]:
+        text_h, user_idx, edge_feats, _, graph_event_count = self._prepare_tensors(request)
+        with torch.no_grad():
             logits, gate = self.artifact.model.forward_logits(text_h, user_idx, edge_feats)
-        return logits, gate, edge_feats.size(0)
+        return logits, gate, graph_event_count
 
     def analyze(self, request: AnalyzeRequest) -> AnalyzeResponse:
         validate_analyze_request(request)
         mode = resolve_inference_mode(request)
-        logits, gate, graph_event_count = self.predict(request)
+        text_h, user_idx, edge_feats, feature_events, graph_event_count = self._prepare_tensors(request)
+
+        with torch.no_grad():
+            logits, gate = self.artifact.model.forward_logits(text_h, user_idx, edge_feats)
+
         probabilities = F.softmax(logits.float(), dim=-1)[0]
         fake_probability = float(probabilities[1].detach().cpu())
         threshold = self.artifact.threshold if self.artifact else settings.threshold
         label = "FAKE" if fake_probability >= threshold else "REAL"
         risk_level = self._risk_level(fake_probability)
-        explanation = (
-            f"TGNN predicts {label} with fake probability {fake_probability:.3f} "
-            f"at threshold {threshold:.2f} using {graph_event_count} graph event(s)."
-        )
+        event_attributions = []
+        propagation_timeline = []
+        tige_result = None
+
         if mode == "text_only_fallback":
-            explanation += (
-                " Degraded text-only fallback: no propagation events were supplied; "
+            explanation = (
+                f"TGNN predicts {label} with fake probability {fake_probability:.3f} "
+                f"at threshold {threshold:.2f} using {graph_event_count} graph event(s). "
+                "Degraded text-only fallback: no propagation events were supplied; "
                 "graph features were synthesized from post text only."
             )
-        elif request.includeXai:
-            explanation += " TIGE explanations are not enabled yet (Phase 3)."
+        elif request.includeXai and graph_event_count > 1:
+            tige_user_idx = user_idx
+            tige_edge_feats = edge_feats
+            tige_events = feature_events
+            if graph_event_count > settings.tige_max_events:
+                tige_user_idx = user_idx[: settings.tige_max_events]
+                tige_edge_feats = edge_feats[: settings.tige_max_events]
+                tige_events = feature_events[: settings.tige_max_events]
+
+            tige_result = compute_tige(
+                self.artifact.model,
+                text_h,
+                tige_user_idx,
+                tige_edge_feats,
+                tige_events,
+                self.artifact.tige_temperature,
+            )
+            if tige_result is not None:
+                event_attributions = build_event_attributions(
+                    tige_result,
+                    feature_events,
+                    settings.tige_top_k,
+                )
+                propagation_timeline = build_propagation_timeline(
+                    feature_events,
+                    tige_result,
+                    settings.tige_top_k,
+                )
+                explanation = build_tige_explanation(
+                    label,
+                    fake_probability,
+                    threshold,
+                    graph_event_count,
+                    event_attributions,
+                )
+            else:
+                explanation = (
+                    f"TGNN predicts {label} with fake probability {fake_probability:.3f} "
+                    f"at threshold {threshold:.2f} using {graph_event_count} graph event(s). "
+                    "TIGE requires at least 2 propagation events."
+                )
+        else:
+            explanation = (
+                f"TGNN predicts {label} with fake probability {fake_probability:.3f} "
+                f"at threshold {threshold:.2f} using {graph_event_count} graph event(s)."
+            )
+            if request.includeXai and graph_event_count <= 1:
+                explanation += " TIGE skipped: not enough propagation events."
 
         return AnalyzeResponse(
             fakeProbability=fake_probability,
@@ -119,6 +187,8 @@ class TGNNPredictor:
             eventCount=len(request.events),
             graphContribution=float(gate.mean().detach().cpu()),
             mode=mode,
+            eventAttributions=event_attributions,
+            propagationTimeline=propagation_timeline,
         )
 
     @staticmethod
