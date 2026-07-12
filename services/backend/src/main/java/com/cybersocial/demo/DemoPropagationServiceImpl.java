@@ -1,5 +1,6 @@
 package com.cybersocial.demo;
 
+import com.cybersocial.ai.PostAnalysisTriggerService;
 import com.cybersocial.auth.repository.UserRepository;
 import com.cybersocial.common.exception.ResourceNotFoundException;
 import com.cybersocial.demo.dto.DemoUserGenerationResponse;
@@ -39,6 +40,7 @@ public class DemoPropagationServiceImpl implements DemoPropagationService {
     private final PasswordEncoder passwordEncoder;
     private final EntityManager entityManager;
     private final PostStatisticsService postStatisticsService;
+    private final PostAnalysisTriggerService postAnalysisTriggerService;
     private final Random random = new Random();
 
     public DemoPropagationServiceImpl(
@@ -49,7 +51,8 @@ public class DemoPropagationServiceImpl implements DemoPropagationService {
             PostShareRepository postShareRepository,
             PasswordEncoder passwordEncoder,
             EntityManager entityManager,
-            PostStatisticsService postStatisticsService
+            PostStatisticsService postStatisticsService,
+            PostAnalysisTriggerService postAnalysisTriggerService
     ) {
         this.userRepository = userRepository;
         this.postRepository = postRepository;
@@ -59,6 +62,7 @@ public class DemoPropagationServiceImpl implements DemoPropagationService {
         this.passwordEncoder = passwordEncoder;
         this.entityManager = entityManager;
         this.postStatisticsService = postStatisticsService;
+        this.postAnalysisTriggerService = postAnalysisTriggerService;
     }
 
     @Override
@@ -94,6 +98,7 @@ public class DemoPropagationServiceImpl implements DemoPropagationService {
         int commentsCreated = createComments(postId, demoUsers, requestedComments, startedAt, durationSeconds, pattern);
         int sharesCreated = createShares(postId, demoUsers, requestedShares, startedAt, durationSeconds, pattern);
         postStatisticsService.invalidate(postId);
+        postAnalysisTriggerService.afterPropagationSimulation(postId);
 
         return new PropagationSimulationResponse(
                 postId,
@@ -193,10 +198,16 @@ public class DemoPropagationServiceImpl implements DemoPropagationService {
     ) {
         int created = 0;
         int total = Math.min(requestedShares, users.size());
+        UUID previousShareId = null;
         for (int i = 0; i < total; i++) {
             User user = users.get(i);
             Instant createdAt = scheduleAt(i, total, startedAt, durationSeconds, pattern);
-            created += insertShare(postId, user.getId(), createdAt);
+            UUID parentShareId = pattern == PropagationPattern.CHAIN ? previousShareId : null;
+            UUID shareId = insertShare(postId, user.getId(), createdAt, parentShareId);
+            created++;
+            if (pattern == PropagationPattern.CHAIN) {
+                previousShareId = shareId;
+            }
         }
         return created;
     }
@@ -227,16 +238,19 @@ public class DemoPropagationServiceImpl implements DemoPropagationService {
                 .executeUpdate();
     }
 
-    private int insertShare(UUID postId, UUID userId, Instant createdAt) {
-        return entityManager.createNativeQuery("""
-                        insert into post_shares (id, post_id, user_id, content, is_synthetic, created_at)
-                        values (:id, :postId, :userId, null, true, :createdAt)
+    private UUID insertShare(UUID postId, UUID userId, Instant createdAt, UUID parentShareId) {
+        UUID shareId = UUID.randomUUID();
+        entityManager.createNativeQuery("""
+                        insert into post_shares (id, post_id, user_id, parent_share_id, content, is_synthetic, created_at)
+                        values (:id, :postId, :userId, :parentShareId, null, true, :createdAt)
                         """)
-                .setParameter("id", UUID.randomUUID())
+                .setParameter("id", shareId)
                 .setParameter("postId", postId)
                 .setParameter("userId", userId)
+                .setParameter("parentShareId", parentShareId)
                 .setParameter("createdAt", createdAt)
                 .executeUpdate();
+        return shareId;
     }
 
     private Instant scheduleAt(
@@ -255,6 +269,7 @@ public class DemoPropagationServiceImpl implements DemoPropagationService {
             case ORGANIC -> (index + 1.0) / (total + 1.0);
             case VIRAL_BURST -> Math.pow((index + 1.0) / total, 2.35);
             case COORDINATED -> 0.55 + ((ordinal - 0.5) * 0.12);
+            case CHAIN -> (index + 1.0) / (total + 1.0);
         };
 
         long millis = Math.round(clamp(position, 0.0, 1.0) * durationSeconds * 1000.0);

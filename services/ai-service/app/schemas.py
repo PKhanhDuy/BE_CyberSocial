@@ -26,6 +26,8 @@ class CascadeFeatures(BaseModel):
 
 
 class InteractionEvent(BaseModel):
+    eventId: str | None = None
+    parentEventId: str | None = None
     srcUserId: int = Field(default=0, ge=0)
     dstArticleId: int = Field(default=0, ge=0)
     timestampUnix: float | None = None
@@ -34,6 +36,7 @@ class InteractionEvent(BaseModel):
     retweetCount: float = Field(default=0.0, ge=0)
     favoriteCount: float = Field(default=0.0, ge=0)
     textLen: float | None = None
+    actorDisplayName: str | None = None
     userProfile: UserProfileFeatures | None = None
     tree: TreeFeatures | None = None
     cascade: CascadeFeatures | None = None
@@ -60,9 +63,25 @@ class GraphAttribution(BaseModel):
 class EventAttribution(BaseModel):
     eventIndex: int
     eventType: str
+    eventTypeLabel: str | None = None
+    relativeTime: str | None = None
+    actorLabel: str | None = None
     tigeRemoval: float | None = None
     confidenceDrop: float | None = None
     summary: str | None = None
+
+
+class PropagationTimelineEvent(BaseModel):
+    eventIndex: int
+    eventId: str | None = None
+    parentEventId: str | None = None
+    depth: int = 0
+    relativeTime: str
+    eventType: str
+    eventTypeLabel: str
+    actorLabel: str
+    tigeRemoval: float | None = None
+    isInfluential: bool = False
 
 
 class AnalyzeResponse(BaseModel):
@@ -75,6 +94,7 @@ class AnalyzeResponse(BaseModel):
     tokenAttributions: list[TokenAttribution] = Field(default_factory=list)
     graphAttributions: list[GraphAttribution] = Field(default_factory=list)
     eventAttributions: list[EventAttribution] = Field(default_factory=list)
+    propagationTimeline: list[PropagationTimelineEvent] = Field(default_factory=list)
     graphContribution: float | None = None
     mode: Literal["full", "text_only_fallback"] = "full"
 

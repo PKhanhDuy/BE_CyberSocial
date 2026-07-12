@@ -405,18 +405,85 @@ TGNN_THRESHOLD=0.59
 
 ---
 
-## 11. Mapping CyberSocial → features (tham chiếu nhanh)
+## 11. Mapping CyberSocial → features (Phase 2)
 
-| Nguồn CyberSocial | Feature notebook |
+### 11.1. Event stream (`PropagationEventBuilder` — backend)
+
+Backend gom timeline từ DB, sort theo `createdAt ASC`:
+
+| Thứ tự | Nguồn | `eventType` | Ghi chú |
+|---|---|---|---|
+| 1 | `Post` (root) | `tweet` | Event đầu tiên, `textLen = len(content)` |
+| … | `PostLike` | `like` | `textLen = 0` |
+| … | `PostComment` | `comment` | `textLen = len(comment.content)` |
+| … | `PostShare` | `share` | Map ≈ retweet; `textLen` = quote hoặc post gốc |
+
+Mỗi event gửi sang AI service:
+
+- `timestampUnix` — epoch giây
+- `eventOrder` — 0..N-1 sau khi sort
+- `retweetCount` — số share tích lũy đến thời điểm event (≈ `retweet_count` notebook)
+- `srcUserId` — hash ổn định từ UUID user
+- `userProfile` — xem mục 11.2
+- `tree` — xem mục 11.3
+
+**API phân tích có post:**
+
+```http
+POST /api/ai/analyze
+{
+  "text": "optional fallback",
+  "postId": "uuid-cua-post",
+  "includeXai": true
+}
+```
+
+Backend tự build `events` từ DB khi có `postId`. Không có `postId` → `text_only_fallback`.
+
+### 11.2. User profile features
+
+Tính từ `User` + bảng `user_follows` + số bài viết:
+
+| Feature | Công thức CyberSocial |
 |---|---|
-| `Post.createdAt` | `relative_time_sec`, `delta_t_sec` |
-| `PostShare` | `event_type=retweet`, tăng `retweet_count` |
-| `PostComment` | `event_type=reply` |
-| `PostLike` | `event_type` tùy map (hoặc `favorite`-like) |
-| `len(post.content)` | `text_len` (event đầu) |
-| `User` profile fields | `u_log_*`, `u_has_profile` |
-| Demo propagation API | build synthetic event stream |
-| Tree/cascade chưa có | default 0 → normalize = 0 |
+| `u_log_followers` | `log1p(followerCount)` — `countByFollowingId` |
+| `u_log_following` | `log1p(followingCount)` — `countByFollowerId` |
+| `u_log_statuses` | `log1p(postCount)` — `countByAuthorId` |
+| `u_foll_ratio` | `u_log_followers - u_log_following` |
+| `u_acct_age_log` | `log1p((event_unix - user.createdAt) / 86400)` |
+| `u_has_profile` | `1.0` nếu có avatar hoặc displayName, else `0.0` |
+
+### 11.3. Tree features (đơn giản hóa)
+
+CyberSocial chưa có cây retweet đầy đủ — dùng heuristic:
+
+| Event | `t_depth` | `t_root_outdeg` |
+|---|---|---|
+| Root post (`tweet`) | 0 | tổng số share của bài |
+| `share` | 1 | tổng số share của bài |
+| `like` / `comment` | 0 | tổng số share của bài |
+
+Sau đó `features.py` áp dụng `log1p` trước normalize.
+
+### 11.4. Cascade features
+
+Tính trong `features.py` từ toàn bộ event stream (mục 3.4) — backend **không** gửi `cascade` override.
+
+### 11.5. Feature thiếu (quy tắc thống nhất)
+
+- Profile hoặc tree **không gửi** → raw = `EDGE_MEAN[column]` → sau normalize = **0.0**
+- Không random, không bỏ cột
+- TIGE mask baseline cũng dùng vector 0 trong không gian đã chuẩn hóa
+
+### 11.6. `event_type_idx`
+
+| CyberSocial | Index mặc định (nếu artifact không có `event_type2idx`) |
+|---|---|
+| `tweet` | 0 |
+| `share` / `retweet` | 1 |
+| `comment` / `reply` | 2 |
+| `quote` | 3 |
+| `like` | 4 |
 
 ---
 

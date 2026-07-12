@@ -12,6 +12,9 @@ class Settings:
     threshold = float(os.getenv("TGNN_THRESHOLD", "0.5"))
     max_events_per_article = int(os.getenv("TGNN_MAX_EVENTS", "256"))
     allow_text_only = os.getenv("TGNN_ALLOW_TEXT_ONLY", "true").lower() == "true"
+    tige_temperature = float(os.getenv("TGNN_TIGE_TEMPERATURE", "1.0"))
+    tige_top_k = int(os.getenv("TGNN_TIGE_TOP_K", "5"))
+    tige_max_events = int(os.getenv("TGNN_TIGE_MAX_EVENTS", "32"))
 
 
 settings = Settings()

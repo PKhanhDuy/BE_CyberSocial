@@ -1,6 +1,6 @@
 # CyberSocial AI Service
 
-FastAPI service for TGNN fake-news detection (Phase 1.4: predict only; TIGE in Phase 3).
+FastAPI service for TGNN fake-news detection with TIGE explanations (Phase 3).
 
 ## Run Locally
 

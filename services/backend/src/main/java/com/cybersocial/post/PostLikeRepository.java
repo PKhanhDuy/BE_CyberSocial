@@ -35,4 +35,12 @@ public interface PostLikeRepository extends JpaRepository<PostLike, UUID> {
             @Param("userId") UUID userId,
             @Param("postIds") Collection<UUID> postIds
     );
+
+    @Query("""
+            select postLike from PostLike postLike
+            join fetch postLike.user
+            where postLike.post.id = :postId
+            order by postLike.createdAt asc
+            """)
+    List<PostLike> findByPostIdWithUserOrderByCreatedAtAsc(@Param("postId") UUID postId);
 }

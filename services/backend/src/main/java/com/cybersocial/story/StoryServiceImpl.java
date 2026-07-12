@@ -5,7 +5,7 @@ import com.cybersocial.common.exception.BadRequestException;
 import com.cybersocial.common.exception.ForbiddenOperationException;
 import com.cybersocial.common.exception.ResourceNotFoundException;
 import com.cybersocial.common.response.PagedResponse;
-import com.cybersocial.friend.Friendship;
+import com.cybersocial.follow.FollowRepository;
 import com.cybersocial.friend.FriendshipRepository;
 import com.cybersocial.friend.FriendshipStatus;
 import com.cybersocial.notification.NotificationService;
@@ -39,6 +39,7 @@ public class StoryServiceImpl implements StoryService {
     private final MusicTrackRepository musicTrackRepository;
     private final UserRepository userRepository;
     private final FriendshipRepository friendshipRepository;
+    private final FollowRepository followRepository;
     private final NotificationService notificationService;
 
     public StoryServiceImpl(
@@ -48,6 +49,7 @@ public class StoryServiceImpl implements StoryService {
             MusicTrackRepository musicTrackRepository,
             UserRepository userRepository,
             FriendshipRepository friendshipRepository,
+            FollowRepository followRepository,
             NotificationService notificationService
     ) {
         this.storyRepository = storyRepository;
@@ -56,6 +58,7 @@ public class StoryServiceImpl implements StoryService {
         this.musicTrackRepository = musicTrackRepository;
         this.userRepository = userRepository;
         this.friendshipRepository = friendshipRepository;
+        this.followRepository = followRepository;
         this.notificationService = notificationService;
     }
 
@@ -249,16 +252,19 @@ public class StoryServiceImpl implements StoryService {
         if (story.getAuthor().getId().equals(currentUserId)) {
             return true;
         }
-        if (story.getVisibility() == StoryVisibility.PUBLIC) {
-            return true;
-        }
         if (story.getVisibility() == StoryVisibility.PRIVATE) {
             return false;
         }
-        return friendshipRepository.findBetween(currentUserId, story.getAuthor().getId())
-                .map(Friendship::getStatus)
-                .filter(FriendshipStatus.ACCEPTED::equals)
-                .isPresent();
+        if (isAcceptedFriend(currentUserId, story.getAuthor().getId())) {
+            return true;
+        }
+        return followRepository.existsByFollowerIdAndFollowingId(currentUserId, story.getAuthor().getId());
+    }
+
+    private boolean isAcceptedFriend(UUID currentUserId, UUID authorId) {
+        return friendshipRepository.findBetween(currentUserId, authorId)
+                .map(friendship -> FriendshipStatus.ACCEPTED.equals(friendship.getStatus()))
+                .orElse(false);
     }
 
     private void notifyStoryReactionOwner(Story story, User reactor, String reactionType, boolean hadReaction) {

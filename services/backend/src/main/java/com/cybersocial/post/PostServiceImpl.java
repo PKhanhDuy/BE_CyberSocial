@@ -1,6 +1,8 @@
 package com.cybersocial.post;
 
+import com.cybersocial.ai.PostAnalysisTriggerService;
 import com.cybersocial.auth.repository.UserRepository;
+import com.cybersocial.common.util.SecurityUtils;
 import com.cybersocial.common.exception.BadRequestException;
 import com.cybersocial.common.exception.ForbiddenOperationException;
 import com.cybersocial.common.exception.ResourceNotFoundException;
@@ -10,6 +12,7 @@ import com.cybersocial.post.dto.PostCommentResponse;
 import com.cybersocial.post.dto.PostRequest;
 import com.cybersocial.post.dto.PostResponse;
 import com.cybersocial.post.dto.PostShareRequest;
+import com.cybersocial.post.dto.PostVerificationResponse;
 import com.cybersocial.user.User;
 import java.util.List;
 import java.util.Map;
@@ -29,6 +32,8 @@ public class PostServiceImpl implements PostService {
     private final PostShareRepository postShareRepository;
     private final UserRepository userRepository;
     private final PostStatisticsService postStatisticsService;
+    private final PostAnalysisTriggerService postAnalysisTriggerService;
+    private final PostVerificationService postVerificationService;
 
     public PostServiceImpl(
             PostRepository postRepository,
@@ -36,7 +41,9 @@ public class PostServiceImpl implements PostService {
             PostCommentRepository postCommentRepository,
             PostShareRepository postShareRepository,
             UserRepository userRepository,
-            PostStatisticsService postStatisticsService
+            PostStatisticsService postStatisticsService,
+            PostAnalysisTriggerService postAnalysisTriggerService,
+            PostVerificationService postVerificationService
     ) {
         this.postRepository = postRepository;
         this.postLikeRepository = postLikeRepository;
@@ -44,6 +51,8 @@ public class PostServiceImpl implements PostService {
         this.postShareRepository = postShareRepository;
         this.userRepository = userRepository;
         this.postStatisticsService = postStatisticsService;
+        this.postAnalysisTriggerService = postAnalysisTriggerService;
+        this.postVerificationService = postVerificationService;
     }
 
     @Override
@@ -52,6 +61,31 @@ public class PostServiceImpl implements PostService {
         Page<Post> posts = authorId == null
                 ? postRepository.findVisiblePosts(pageable)
                 : postRepository.findVisiblePostsByAuthor(authorId, pageable);
+        List<UUID> postIds = posts.getContent().stream().map(Post::getId).toList();
+        Map<UUID, PostStatistics> statistics = postStatisticsService.findAll(postIds);
+        Set<UUID> likedPostIds = postIds.isEmpty()
+                ? Set.of()
+                : postLikeRepository.findLikedPostIds(currentUserId, postIds);
+        Page<PostResponse> page = posts.map(post -> toResponse(
+                post,
+                statistics.getOrDefault(post.getId(), new PostStatistics(0, 0, 0)),
+                likedPostIds.contains(post.getId())
+        ));
+        return new PagedResponse<>(
+                page.getContent(),
+                page.getNumber(),
+                page.getSize(),
+                page.getTotalElements(),
+                page.getTotalPages(),
+                page.isFirst(),
+                page.isLast()
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PagedResponse<PostResponse> findVerifiedPosts(UUID currentUserId, Pageable pageable) {
+        Page<Post> posts = postRepository.findVerifiedRealPosts(pageable);
         List<UUID> postIds = posts.getContent().stream().map(Post::getId).toList();
         Map<UUID, PostStatistics> statistics = postStatisticsService.findAll(postIds);
         Set<UUID> likedPostIds = postIds.isEmpty()
@@ -102,10 +136,10 @@ public class PostServiceImpl implements PostService {
                 .visibility(request.visibility() == null ? PostVisibility.PUBLIC : request.visibility())
                 .mediaUrls(mediaUrls)
                 .build();
-        // Post post = new Post();
-        // post.setAuthor(author);
 
-        return toResponse(postRepository.save(post), currentUserId);
+        Post savedPost = postRepository.save(post);
+        postVerificationService.initializeForPost(savedPost);
+        return toResponse(savedPost, currentUserId);
     }
 
     @Override
@@ -131,6 +165,7 @@ public class PostServiceImpl implements PostService {
                     .build());
         }
         postStatisticsService.invalidate(postId);
+        postAnalysisTriggerService.onInteraction(postId);
         return toResponse(post, currentUserId);
     }
 
@@ -174,6 +209,7 @@ public class PostServiceImpl implements PostService {
                 .content(content)
                 .build());
         postStatisticsService.invalidate(postId);
+        postAnalysisTriggerService.onInteraction(postId);
         return PostCommentResponse.from(comment);
     }
 
@@ -197,30 +233,47 @@ public class PostServiceImpl implements PostService {
     @Override
     @Transactional
     public PostResponse sharePost(UUID currentUserId, UUID postId, PostShareRequest request) {
-        Post sharedPost = getPost(postId);
+        Post viewedPost = postRepository.findByIdWithSharedPost(postId)
+                .orElseThrow(() -> new ResourceNotFoundException("Post not found"));
+        Post rootPost = resolveRootPost(viewedPost);
         User user = getUser(currentUserId);
         String content = normalizeOptional(request.content());
-
-        PostShare share = postShareRepository.save(PostShare.builder()
-                .post(sharedPost)
-                .user(user)
-                .content(content)
-                .build());
+        PostShare parentShare = resolveParentShare(viewedPost, rootPost, request.viaShareId());
 
         Post repost = postRepository.save(Post.builder()
                 .author(user)
-                .sharedPost(sharedPost)
-                .content(share.getContent() == null ? "" : share.getContent())
+                .sharedPost(rootPost)
+                .content(content == null ? "" : content)
                 .visibility(PostVisibility.PUBLIC)
                 .mediaUrls(List.of())
                 .build());
-        postStatisticsService.invalidate(postId);
+
+        PostShare share = postShareRepository.save(PostShare.builder()
+                .post(rootPost)
+                .user(user)
+                .content(content)
+                .parentShare(parentShare)
+                .repostPost(repost)
+                .build());
+
+        postStatisticsService.invalidate(rootPost.getId());
+        postAnalysisTriggerService.onInteraction(rootPost.getId());
         return toResponse(repost, currentUserId);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public PostVerificationResponse findVerification(UUID postId) {
+        return postVerificationService.findByPostId(postId);
+    }
+
     private Post getPost(UUID postId) {
-        return postRepository.findById(postId)
+        Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new ResourceNotFoundException("Post not found"));
+        if (post.isHidden() && !SecurityUtils.isAdmin()) {
+            throw new ResourceNotFoundException("Post not found");
+        }
+        return post;
     }
 
     private User getUser(UUID userId) {
@@ -271,5 +324,34 @@ public class PostServiceImpl implements PostService {
         }
         String normalized = value.trim();
         return normalized.isBlank() ? null : normalized;
+    }
+
+    private Post resolveRootPost(Post post) {
+        Post current = post;
+        while (current.getSharedPost() != null) {
+            UUID parentId = current.getSharedPost().getId();
+            current = postRepository.findByIdWithSharedPost(parentId)
+                    .orElse(current.getSharedPost());
+        }
+        return current;
+    }
+
+    private PostShare resolveParentShare(Post viewedPost, Post rootPost, UUID viaShareId) {
+        if (viaShareId != null) {
+            PostShare parentShare = postShareRepository.findById(viaShareId)
+                    .orElseThrow(() -> new BadRequestException("Parent share not found"));
+            if (!parentShare.getPost().getId().equals(rootPost.getId())) {
+                throw new BadRequestException("Parent share does not belong to this post");
+            }
+            return parentShare;
+        }
+
+        if (viewedPost.getSharedPost() != null && !viewedPost.getId().equals(rootPost.getId())) {
+            return postShareRepository
+                    .findFirstByPostIdAndUserIdOrderByCreatedAtDesc(rootPost.getId(), viewedPost.getAuthor().getId())
+                    .orElse(null);
+        }
+
+        return null;
     }
 }
