@@ -7,6 +7,7 @@ import com.cybersocial.post.dto.PostRequest;
 import com.cybersocial.post.dto.PostResponse;
 import com.cybersocial.post.dto.PostShareRequest;
 import com.cybersocial.post.dto.PostVerificationResponse;
+import com.cybersocial.post.dto.VerifiedNewsStatsResponse;
 import java.util.UUID;
 import org.springframework.data.domain.Pageable;
 
@@ -15,6 +16,8 @@ public interface PostService {
     PagedResponse<PostResponse> findPosts(UUID currentUserId, Pageable pageable, UUID authorId);
 
     PagedResponse<PostResponse> findVerifiedPosts(UUID currentUserId, Pageable pageable);
+
+    VerifiedNewsStatsResponse findVerifiedNewsStats();
 
     PostResponse findPost(UUID currentUserId, UUID id);
 

@@ -3,6 +3,7 @@ package com.cybersocial.post;
 import com.cybersocial.ai.AiAnalysisProperties;
 import com.cybersocial.common.exception.ResourceNotFoundException;
 import com.cybersocial.post.dto.PostVerificationResponse;
+import com.cybersocial.post.dto.VerifiedNewsStatsResponse;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -85,5 +86,13 @@ public class PostVerificationService {
             }
         }
         return 0;
+    }
+
+    @Transactional(readOnly = true)
+    public VerifiedNewsStatsResponse findVerifiedNewsStats() {
+        return new VerifiedNewsStatsResponse(
+                postVerificationRepository.countVerifiedRealPosts(),
+                postVerificationRepository.averageVerifiedAnalysisDelayMs()
+        );
     }
 }
