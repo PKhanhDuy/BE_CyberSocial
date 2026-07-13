@@ -82,6 +82,29 @@ public interface PostVerificationRepository extends JpaRepository<PostVerificati
             select count(verification)
             from PostVerification verification
             join verification.post post
+            where post.synthetic = false
+              and post.hidden = false
+              and verification.verificationStatus = com.cybersocial.post.PostVerificationStatus.COMPLETED
+              and verification.label = 'REAL'
+            """)
+    long countVerifiedRealPosts();
+
+    @Query(value = """
+            select avg(extract(epoch from (v.last_analyzed_at - p.created_at)) * 1000)
+            from post_verifications v
+            inner join posts p on p.id = v.post_id
+            where p.is_synthetic = false
+              and p.hidden = false
+              and v.verification_status = 'COMPLETED'
+              and v.label = 'REAL'
+              and v.last_analyzed_at is not null
+            """, nativeQuery = true)
+    Double averageVerifiedAnalysisDelayMs();
+
+    @Query("""
+            select count(verification)
+            from PostVerification verification
+            join verification.post post
             where verification.verificationStatus = :status
               and post.synthetic = false
               and post.hidden = false

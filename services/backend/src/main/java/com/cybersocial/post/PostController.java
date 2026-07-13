@@ -9,6 +9,7 @@ import com.cybersocial.post.dto.PostRequest;
 import com.cybersocial.post.dto.PostResponse;
 import com.cybersocial.post.dto.PostShareRequest;
 import com.cybersocial.post.dto.PostVerificationResponse;
+import com.cybersocial.post.dto.VerifiedNewsStatsResponse;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import org.springframework.data.domain.PageRequest;
@@ -55,6 +56,14 @@ public class PostController {
         Pageable pageable = PageRequest.of(Math.max(page, 0), normalizedSize);
         return ResponseEntity.ok(ApiResponse.success(
                 postService.findVerifiedPosts(SecurityUtils.requireCurrentUserId(), pageable)
+        ));
+    }
+
+    @GetMapping("/verified/stats")
+    public ResponseEntity<ApiResponse<VerifiedNewsStatsResponse>> verifiedNewsStats() {
+        return ResponseEntity.ok(ApiResponse.success(
+                "Verified news stats loaded",
+                postService.findVerifiedNewsStats()
         ));
     }
 

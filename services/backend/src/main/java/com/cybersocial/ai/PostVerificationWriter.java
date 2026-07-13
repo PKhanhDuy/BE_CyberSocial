@@ -1,6 +1,8 @@
 package com.cybersocial.ai;
 
 import com.cybersocial.ai.dto.AIAnalysisResponse;
+import com.cybersocial.notification.NotificationService;
+import com.cybersocial.notification.NotificationType;
 import com.cybersocial.post.Post;
 import com.cybersocial.post.PostRepository;
 import com.cybersocial.post.PostVerification;
@@ -21,15 +23,18 @@ public class PostVerificationWriter {
     private final PostRepository postRepository;
     private final PostVerificationRepository postVerificationRepository;
     private final PostVerificationService postVerificationService;
+    private final NotificationService notificationService;
 
     public PostVerificationWriter(
             PostRepository postRepository,
             PostVerificationRepository postVerificationRepository,
-            PostVerificationService postVerificationService
+            PostVerificationService postVerificationService,
+            NotificationService notificationService
     ) {
         this.postRepository = postRepository;
         this.postVerificationRepository = postVerificationRepository;
         this.postVerificationService = postVerificationService;
+        this.notificationService = notificationService;
     }
 
     @Transactional
@@ -46,6 +51,8 @@ public class PostVerificationWriter {
     public void saveSuccess(UUID postId, int targetTier, int interactionCount, AIAnalysisResponse response) {
         PostVerification verification = postVerificationRepository.findByPostId(postId)
                 .orElseThrow(() -> new IllegalStateException("Verification not found for post: " + postId));
+
+        String previousLabel = verification.getLabel();
 
         verification.setVerificationStatus(PostVerificationStatus.COMPLETED);
         verification.setAnalysisTier(targetTier);
@@ -65,6 +72,41 @@ public class PostVerificationWriter {
                 response.propagationTimeline() == null ? List.of() : response.propagationTimeline()
         );
         postVerificationRepository.save(verification);
+
+        if ("FAKE".equals(response.label()) && !"FAKE".equals(previousLabel)) {
+            notifyAuthorOfFakeLabel(postId, response);
+        }
+    }
+
+    private void notifyAuthorOfFakeLabel(UUID postId, AIAnalysisResponse response) {
+        postRepository.findByIdWithAuthor(postId).ifPresent(post -> {
+            if (post.isSynthetic()) {
+                return;
+            }
+
+            String excerpt = truncate(post.getContent(), 120);
+            String riskText = response.riskLevel() == null ? "" : " Mức rủi ro: " + response.riskLevel() + ".";
+
+            notificationService.create(
+                    post.getAuthor(),
+                    NotificationType.SECURITY,
+                    "Cảnh báo: Bài viết được gắn nhãn tin giả",
+                    "Hệ thống AI đã phân tích và xác định bài viết của bạn có khả năng là tin giả."
+                            + riskText
+                            + (excerpt.isBlank() ? "" : " Nội dung: \"" + excerpt + "\"")
+            );
+        });
+    }
+
+    private String truncate(String value, int maxLength) {
+        if (value == null || value.isBlank()) {
+            return "";
+        }
+        String normalized = value.strip().replaceAll("\\s+", " ");
+        if (normalized.length() <= maxLength) {
+            return normalized;
+        }
+        return normalized.substring(0, maxLength - 3) + "...";
     }
 
     @Transactional

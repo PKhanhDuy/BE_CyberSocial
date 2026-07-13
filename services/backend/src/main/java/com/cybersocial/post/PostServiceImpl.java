@@ -13,6 +13,7 @@ import com.cybersocial.post.dto.PostRequest;
 import com.cybersocial.post.dto.PostResponse;
 import com.cybersocial.post.dto.PostShareRequest;
 import com.cybersocial.post.dto.PostVerificationResponse;
+import com.cybersocial.post.dto.VerifiedNewsStatsResponse;
 import com.cybersocial.user.User;
 import java.util.List;
 import java.util.Map;
@@ -105,6 +106,12 @@ public class PostServiceImpl implements PostService {
                 page.isFirst(),
                 page.isLast()
         );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public VerifiedNewsStatsResponse findVerifiedNewsStats() {
+        return postVerificationService.findVerifiedNewsStats();
     }
 
     @Override
