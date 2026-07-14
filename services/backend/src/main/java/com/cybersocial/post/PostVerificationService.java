@@ -1,9 +1,10 @@
 package com.cybersocial.post;
 
-import com.cybersocial.ai.AiAnalysisProperties;
+import com.cybersocial.ai.config.AiRuntimeConfigService;
 import com.cybersocial.common.exception.ResourceNotFoundException;
 import com.cybersocial.post.dto.PostVerificationResponse;
 import com.cybersocial.post.dto.VerifiedNewsStatsResponse;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,18 +15,18 @@ public class PostVerificationService {
     private final PostVerificationRepository postVerificationRepository;
     private final PostRepository postRepository;
     private final PostStatisticsService postStatisticsService;
-    private final AiAnalysisProperties aiAnalysisProperties;
+    private final AiRuntimeConfigService aiRuntimeConfigService;
 
     public PostVerificationService(
             PostVerificationRepository postVerificationRepository,
             PostRepository postRepository,
             PostStatisticsService postStatisticsService,
-            AiAnalysisProperties aiAnalysisProperties
+            AiRuntimeConfigService aiRuntimeConfigService
     ) {
         this.postVerificationRepository = postVerificationRepository;
         this.postRepository = postRepository;
         this.postStatisticsService = postStatisticsService;
-        this.aiAnalysisProperties = aiAnalysisProperties;
+        this.aiRuntimeConfigService = aiRuntimeConfigService;
     }
 
     @Transactional(readOnly = true)
@@ -79,8 +80,9 @@ public class PostVerificationService {
     }
 
     public int nextThresholdFor(long totalInteractions, int completedTier) {
-        for (int index = completedTier; index < aiAnalysisProperties.thresholds().size(); index++) {
-            int threshold = aiAnalysisProperties.thresholds().get(index);
+        List<Integer> thresholds = aiRuntimeConfigService.thresholds();
+        for (int index = completedTier; index < thresholds.size(); index++) {
+            int threshold = thresholds.get(index);
             if (totalInteractions < threshold) {
                 return threshold;
             }

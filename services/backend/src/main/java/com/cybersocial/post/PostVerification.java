@@ -97,6 +97,24 @@ public class PostVerification {
     @Column(name = "last_analyzed_at")
     private Instant lastAnalyzedAt;
 
+    /** Admin đã xác nhận tin giả → dán nhãn cảnh báo công khai trên bài viết. */
+    @Builder.Default
+    @Column(name = "public_label", nullable = false)
+    private boolean publicLabel = false;
+
+    /** Quyết định của admin: CONFIRM_FAKE | REJECT_LABEL (null nếu chưa duyệt). */
+    @Column(name = "admin_decision", length = 20)
+    private String adminDecision;
+
+    @Column(name = "admin_note", length = 500)
+    private String adminNote;
+
+    @Column(name = "reviewed_at")
+    private Instant reviewedAt;
+
+    @Column(name = "reviewed_by")
+    private UUID reviewedBy;
+
     @CreatedDate
     @Column(nullable = false, updatable = false)
     private Instant createdAt;

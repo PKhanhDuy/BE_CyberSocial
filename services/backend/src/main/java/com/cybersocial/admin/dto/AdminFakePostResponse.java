@@ -15,6 +15,9 @@ public record AdminFakePostResponse(
         String label,
         Double fakeProbability,
         RiskLevel riskLevel,
+        boolean publicLabel,
+        String adminDecision,
+        Instant reviewedAt,
         Instant lastAnalyzedAt,
         Instant createdAt
 ) {
@@ -28,6 +31,9 @@ public record AdminFakePostResponse(
                 verification.getLabel(),
                 verification.getFakeProbability() == null ? null : verification.getFakeProbability().doubleValue(),
                 verification.getRiskLevel(),
+                verification.isPublicLabel(),
+                verification.getAdminDecision(),
+                verification.getReviewedAt(),
                 verification.getLastAnalyzedAt(),
                 post.getCreatedAt()
         );

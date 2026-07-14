@@ -2,6 +2,8 @@ package com.cybersocial.admin;
 
 import com.cybersocial.admin.dto.AdminFakePostResponse;
 import com.cybersocial.admin.dto.AdminPostResponse;
+import com.cybersocial.admin.dto.DeletePostRequest;
+import com.cybersocial.admin.dto.PostVerdictRequest;
 import com.cybersocial.admin.dto.UpdatePostHiddenRequest;
 import com.cybersocial.common.response.ApiResponse;
 import com.cybersocial.common.response.PagedResponse;
@@ -16,6 +18,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -72,8 +75,22 @@ public class AdminPostController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<Void>> deletePost(@PathVariable UUID id) {
-        adminPostService.deletePost(id);
+    public ResponseEntity<ApiResponse<Void>> deletePost(
+            @PathVariable UUID id,
+            @Valid @RequestBody DeletePostRequest request
+    ) {
+        adminPostService.deletePost(id, request);
         return ResponseEntity.ok(ApiResponse.success("Post deleted", null));
+    }
+
+    @PostMapping("/{id}/verdict")
+    public ResponseEntity<ApiResponse<AdminFakePostResponse>> applyVerdict(
+            @PathVariable UUID id,
+            @Valid @RequestBody PostVerdictRequest request
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "Đã xử lý nhãn tin giả",
+                adminPostService.applyVerdict(id, request)
+        ));
     }
 }
