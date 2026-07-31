@@ -9,6 +9,11 @@ public record LoginRequest(
         String email,
 
         @NotBlank(message = "Password is required")
-        String password
+        String password,
+
+        Boolean rememberMe
 ) {
+    public boolean shouldRememberDevice() {
+        return Boolean.TRUE.equals(rememberMe);
+    }
 }

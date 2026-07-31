@@ -11,6 +11,7 @@ import com.cybersocial.auth.dto.ResetPasswordRequest;
 import com.cybersocial.auth.repository.PasswordResetTokenRepository;
 import com.cybersocial.auth.repository.RefreshTokenRepository;
 import com.cybersocial.auth.repository.UserRepository;
+import com.cybersocial.common.exception.AccountLockedException;
 import com.cybersocial.common.exception.BadRequestException;
 import com.cybersocial.common.exception.ConflictException;
 import com.cybersocial.common.util.HashUtil;
@@ -19,6 +20,7 @@ import com.cybersocial.user.User;
 import com.cybersocial.user.UserRole;
 import com.cybersocial.user.dto.UserResponse;
 import java.security.SecureRandom;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Base64;
@@ -87,21 +89,24 @@ public class AuthServiceImpl implements AuthService {
                 .role(UserRole.USER)
                 .build();
 
-        return issueTokens(userRepository.save(user));
+        return issueTokens(userRepository.save(user), jwtUtil.refreshTokenExpiry(true));
     }
 
     @Override
     @Transactional
     public AuthenticationResult login(LoginRequest request) {
-        try {
-            authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(request.email(), request.password()));
-        } catch (BadCredentialsException exception) {
+        User user = userRepository.findByEmailIgnoreCase(request.email())
+                .orElseThrow(() -> new BadCredentialsException("Invalid email or password"));
+
+        if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
             throw new BadCredentialsException("Invalid email or password");
         }
 
-        User user = userRepository.findByEmailIgnoreCase(request.email())
-                .orElseThrow(() -> new BadCredentialsException("Invalid email or password"));
-        return issueTokens(user);
+        if (!user.isEnabled()) {
+            throw new AccountLockedException(user.getLockReason());
+        }
+
+        return issueTokens(user, jwtUtil.refreshTokenExpiry(request.shouldRememberDevice()));
     }
 
     @Override
@@ -174,7 +179,12 @@ public class AuthServiceImpl implements AuthService {
         }
 
         storedToken.setRevokedAt(Instant.now());
-        return issueTokens(storedToken.getUser());
+        User user = storedToken.getUser();
+        if (!user.isEnabled()) {
+            throw new AccountLockedException(user.getLockReason());
+        }
+        // Keep the original session window so "remember me" / short session is not extended on refresh.
+        return issueTokens(user, storedToken.getExpiresAt());
     }
 
     @Override
@@ -203,13 +213,17 @@ public class AuthServiceImpl implements AuthService {
         return resetToken;
     }
 
-    private AuthenticationResult issueTokens(User user) {
+    private AuthenticationResult issueTokens(User user, Instant refreshExpiresAt) {
+        Instant now = Instant.now();
+        Instant effectiveExpiry = refreshExpiresAt.isAfter(now) ? refreshExpiresAt : jwtUtil.refreshTokenExpiry(false);
+        long refreshMaxAgeSeconds = Math.max(Duration.between(now, effectiveExpiry).getSeconds(), 0);
+
         String accessToken = jwtUtil.generateAccessToken(user.getId(), user.getEmail(), user.getRole().name());
         String refreshTokenValue = newRefreshToken();
         RefreshToken refreshToken = RefreshToken.builder()
                 .user(user)
                 .tokenHash(HashUtil.sha256(refreshTokenValue))
-                .expiresAt(jwtUtil.refreshTokenExpiry())
+                .expiresAt(effectiveExpiry)
                 .build();
         refreshTokenRepository.save(refreshToken);
 
@@ -219,7 +233,7 @@ public class AuthServiceImpl implements AuthService {
                 jwtUtil.accessTokenTtlSeconds(),
                 UserResponse.from(user)
         );
-        return new AuthenticationResult(response, refreshTokenValue, jwtUtil.refreshTokenTtlSeconds());
+        return new AuthenticationResult(response, refreshTokenValue, refreshMaxAgeSeconds);
     }
 
     private String newRefreshToken() {

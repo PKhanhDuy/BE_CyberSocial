@@ -20,7 +20,7 @@ services:
     restart: unless-stopped
     environment:
       PYTHONUNBUFFERED: "1"
-      TGNN_MODEL_PATH: ${TGNN_MODEL_PATH:-models/tgnn_deployment.pth}
+      TGNN_MODEL_PATH: ${TGNN_MODEL_PATH:-models/tgnn_tice.pt}
       TGNN_ST_MODEL_NAME: ${TGNN_ST_MODEL_NAME:-sentence-transformers/all-MiniLM-L6-v2}
       TGNN_THRESHOLD: ${TGNN_THRESHOLD:-0.5}
     ports:
@@ -58,6 +58,7 @@ services:
       JWT_ISSUER: ${JWT_ISSUER:-}
       JWT_ACCESS_TOKEN_MINUTES: ${JWT_ACCESS_TOKEN_MINUTES:-15}
       JWT_REFRESH_TOKEN_DAYS: ${JWT_REFRESH_TOKEN_DAYS:-30}
+      JWT_REFRESH_TOKEN_SESSION_DAYS: ${JWT_REFRESH_TOKEN_SESSION_DAYS:-1}
       AI_SERVICE_URL: http://ai-service:8000
       MAIL_USERNAME: ${MAIL_USERNAME:-}
       MAIL_PASSWORD: ${MAIL_PASSWORD:-}

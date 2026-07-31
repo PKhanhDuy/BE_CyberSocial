@@ -298,12 +298,19 @@ public class PostServiceImpl implements PostService {
     }
 
     private PostResponse toResponse(Post post, PostStatistics statistics, boolean likedByCurrentUser) {
+        UUID viaShareId = null;
+        if (post.getSharedPost() != null) {
+            viaShareId = postShareRepository.findByRepostPostId(post.getId())
+                    .map(PostShare::getId)
+                    .orElse(null);
+        }
         return PostResponse.from(
                 post,
                 statistics.likeCount(),
                 statistics.commentCount(),
                 statistics.shareCount(),
-                likedByCurrentUser
+                likedByCurrentUser,
+                viaShareId
         );
     }
 

@@ -10,7 +10,7 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-Place the Kaggle export at `models/tgnn_deployment.pth` (see `MODEL_SPEC.md`).
+Place the trained checkpoint at `models/tgnn_tice.pt` (see `MODEL_SPEC.md` / `models/README.md`).
 
 ## Docker Compose
 
@@ -29,8 +29,8 @@ docker compose up --build ai-service
   "status": "ok",
   "modelLoaded": true,
   "device": "cpu",
-  "modelPath": "models/tgnn_deployment.pth",
-  "threshold": 0.59,
+  "modelPath": "models/tgnn_tice.pt",
+  "threshold": 0.5,
   "edgeNormalization": true,
   "stModelName": "sentence-transformers/all-MiniLM-L6-v2",
   "numUsers": 247933,
@@ -106,7 +106,7 @@ docker compose up --build ai-service
 ## Environment
 
 ```env
-TGNN_MODEL_PATH=models/tgnn_deployment.pth
+TGNN_MODEL_PATH=models/tgnn_tice.pt
 TGNN_ST_MODEL_NAME=sentence-transformers/all-MiniLM-L6-v2
 TGNN_THRESHOLD=0.59
 TGNN_ALLOW_TEXT_ONLY=true

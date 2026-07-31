@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field
 
 
 RiskLevel = Literal["LOW", "MEDIUM", "HIGH"]
+ImpactLevel = Literal["high", "medium", "low"]
 
 
 class UserProfileFeatures(BaseModel):
@@ -68,7 +69,9 @@ class EventAttribution(BaseModel):
     actorLabel: str | None = None
     tigeRemoval: float | None = None
     confidenceDrop: float | None = None
+    conditionalTige: float | None = None
     summary: str | None = None
+    impactLevel: ImpactLevel | None = None
 
 
 class PropagationTimelineEvent(BaseModel):
@@ -81,12 +84,16 @@ class PropagationTimelineEvent(BaseModel):
     eventTypeLabel: str
     actorLabel: str
     tigeRemoval: float | None = None
+    conditionalTige: float | None = None
     isInfluential: bool = False
 
 
 class AnalyzeResponse(BaseModel):
     fakeProbability: float
     explanation: str
+    headline: str | None = None
+    narrative: str | None = None
+    contextHints: list[str] = Field(default_factory=list)
     riskLevel: RiskLevel
     label: Literal["REAL", "FAKE"]
     threshold: float
@@ -97,6 +104,7 @@ class AnalyzeResponse(BaseModel):
     propagationTimeline: list[PropagationTimelineEvent] = Field(default_factory=list)
     graphContribution: float | None = None
     mode: Literal["full", "text_only_fallback"] = "full"
+    targetClass: int | None = None
 
 
 class HealthResponse(BaseModel):

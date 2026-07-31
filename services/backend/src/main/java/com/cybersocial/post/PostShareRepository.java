@@ -30,4 +30,6 @@ public interface PostShareRepository extends JpaRepository<PostShare, UUID> {
     List<PostShare> findByPostIdWithUserOrderByCreatedAtAsc(@Param("postId") UUID postId);
 
     Optional<PostShare> findFirstByPostIdAndUserIdOrderByCreatedAtDesc(UUID postId, UUID userId);
+
+    Optional<PostShare> findByRepostPostId(UUID repostPostId);
 }

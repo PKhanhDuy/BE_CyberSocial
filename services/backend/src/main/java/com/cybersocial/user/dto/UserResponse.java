@@ -13,6 +13,7 @@ public record UserResponse(
         String avatarUrl,
         String coverUrl,
         UserRole role,
+        boolean enabled,
         ThemePreference themePreference,
         Instant createdAt,
         Instant updatedAt
@@ -25,6 +26,7 @@ public record UserResponse(
                 user.getAvatarUrl(),
                 user.getCoverUrl(),
                 user.getRole(),
+                user.isEnabled(),
                 user.getThemePreference(),
                 user.getCreatedAt(),
                 user.getUpdatedAt()

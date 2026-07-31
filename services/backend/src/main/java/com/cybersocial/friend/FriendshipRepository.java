@@ -54,5 +54,16 @@ public interface FriendshipRepository extends JpaRepository<Friendship, UUID> {
             @Param("secondUserId") UUID secondUserId
     );
 
+    @Query("""
+            select case
+                when f.requester.id = :userId then f.addressee.id
+                else f.requester.id
+            end
+            from Friendship f
+            where (f.requester.id = :userId or f.addressee.id = :userId)
+              and f.status = com.cybersocial.friend.FriendshipStatus.ACCEPTED
+            """)
+    List<UUID> findAcceptedFriendIds(@Param("userId") UUID userId);
+
     long countByStatus(FriendshipStatus status);
 }

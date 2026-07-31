@@ -8,9 +8,10 @@ from app.inference.validation import resolve_inference_mode, validate_analyze_re
 from app.schemas import AnalyzeRequest, AnalyzeResponse, InteractionEvent
 from app.settings import settings
 from app.xai.explanation import (
+    build_basic_explanation,
     build_event_attributions,
+    build_explanation_content,
     build_propagation_timeline,
-    build_tige_explanation,
 )
 from app.xai.tige import compute_tige
 
@@ -121,13 +122,21 @@ class TGNNPredictor:
         event_attributions = []
         propagation_timeline = []
         tige_result = None
+        target_class = int(torch.argmax(probabilities).item())
+        headline = None
+        narrative = None
+        context_hints: list[str] = []
+        explanation = ""
 
         if mode == "text_only_fallback":
-            explanation = (
-                f"TGNN predicts {label} with fake probability {fake_probability:.3f} "
-                f"at threshold {threshold:.2f} using {graph_event_count} graph event(s). "
-                "Degraded text-only fallback: no propagation events were supplied; "
-                "graph features were synthesized from post text only."
+            headline, narrative, explanation, context_hints = build_explanation_content(
+                label,
+                fake_probability,
+                threshold,
+                graph_event_count,
+                feature_events,
+                [],
+                mode=mode,
             )
         elif request.includeXai and graph_event_count > 1:
             tige_user_idx = user_idx
@@ -147,6 +156,7 @@ class TGNNPredictor:
                 self.artifact.tige_temperature,
             )
             if tige_result is not None:
+                target_class = tige_result.target_class
                 event_attributions = build_event_attributions(
                     tige_result,
                     feature_events,
@@ -157,36 +167,49 @@ class TGNNPredictor:
                     tige_result,
                     settings.tige_top_k,
                 )
-                explanation = build_tige_explanation(
+                headline, narrative, explanation, context_hints = build_explanation_content(
                     label,
                     fake_probability,
                     threshold,
                     graph_event_count,
+                    feature_events,
                     event_attributions,
+                    mode=mode,
                 )
             else:
-                explanation = (
-                    f"TGNN predicts {label} with fake probability {fake_probability:.3f} "
-                    f"at threshold {threshold:.2f} using {graph_event_count} graph event(s). "
-                    "TIGE requires at least 2 propagation events."
+                headline, narrative, explanation, context_hints = build_explanation_content(
+                    label,
+                    fake_probability,
+                    threshold,
+                    graph_event_count,
+                    feature_events,
+                    [],
+                    mode=mode,
                 )
         else:
-            explanation = (
-                f"TGNN predicts {label} with fake probability {fake_probability:.3f} "
-                f"at threshold {threshold:.2f} using {graph_event_count} graph event(s)."
+            headline, narrative, explanation, context_hints = build_explanation_content(
+                label,
+                fake_probability,
+                threshold,
+                graph_event_count,
+                feature_events,
+                [],
+                mode=mode,
             )
-            if request.includeXai and graph_event_count <= 1:
-                explanation += " TIGE skipped: not enough propagation events."
 
         return AnalyzeResponse(
             fakeProbability=fake_probability,
             explanation=explanation,
+            headline=headline,
+            narrative=narrative,
+            contextHints=context_hints,
             riskLevel=risk_level,
             label=label,
             threshold=threshold,
             eventCount=len(request.events),
             graphContribution=float(gate.mean().detach().cpu()),
             mode=mode,
+            targetClass=target_class,
             eventAttributions=event_attributions,
             propagationTimeline=propagation_timeline,
         )

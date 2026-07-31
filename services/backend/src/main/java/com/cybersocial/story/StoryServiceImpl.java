@@ -274,8 +274,8 @@ public class StoryServiceImpl implements StoryService {
         notificationService.create(
                 story.getAuthor(),
                 NotificationType.STORY,
-                "Story cua ban co reaction moi",
-                reactor.getDisplayName() + " da tha " + reactionType + " vao story cua ban."
+                "Story của bạn có reaction mới",
+                reactor.getDisplayName() + " đã thả " + reactionType + " vào story của bạn."
         );
     }
 

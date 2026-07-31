@@ -198,18 +198,36 @@ public class DemoPropagationServiceImpl implements DemoPropagationService {
     ) {
         int created = 0;
         int total = Math.min(requestedShares, users.size());
-        UUID previousShareId = null;
+        List<UUID> chainShareIds = new ArrayList<>();
         for (int i = 0; i < total; i++) {
             User user = users.get(i);
             Instant createdAt = scheduleAt(i, total, startedAt, durationSeconds, pattern);
-            UUID parentShareId = pattern == PropagationPattern.CHAIN ? previousShareId : null;
+            UUID parentShareId = pattern == PropagationPattern.CHAIN
+                    ? resolveChainParentShareId(chainShareIds)
+                    : null;
             UUID shareId = insertShare(postId, user.getId(), createdAt, parentShareId);
             created++;
             if (pattern == PropagationPattern.CHAIN) {
-                previousShareId = shareId;
+                chainShareIds.add(shareId);
             }
         }
         return created;
+    }
+
+    /**
+     * Build a branching share tree: some shares re-post from root, others from prior shares.
+     * Produces a multi-branch propagation graph instead of a single straight line.
+     */
+    private UUID resolveChainParentShareId(List<UUID> existingShareIds) {
+        if (existingShareIds.isEmpty()) {
+            return null;
+        }
+        if (random.nextDouble() < 0.35) {
+            return null;
+        }
+        int window = Math.min(existingShareIds.size(), 8);
+        int start = existingShareIds.size() - window;
+        return existingShareIds.get(start + random.nextInt(window));
     }
 
     private int insertLike(UUID postId, UUID userId, Instant createdAt) {

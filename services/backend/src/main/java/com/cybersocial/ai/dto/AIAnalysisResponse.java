@@ -6,6 +6,9 @@ import java.util.List;
 public record AIAnalysisResponse(
         double fakeProbability,
         String explanation,
+        String headline,
+        String narrative,
+        List<String> contextHints,
         RiskLevel riskLevel,
         String label,
         Double threshold,
@@ -16,7 +19,7 @@ public record AIAnalysisResponse(
         List<PropagationTimelineEventResponse> propagationTimeline
 ) {
     public AIAnalysisResponse(double fakeProbability, String explanation, RiskLevel riskLevel) {
-        this(fakeProbability, explanation, riskLevel, null, null, null, null, null, List.of(), List.of());
+        this(fakeProbability, explanation, null, null, List.of(), riskLevel, null, null, null, null, null, List.of(), List.of());
     }
 
     public AIAnalysisResponse(
@@ -32,6 +35,9 @@ public record AIAnalysisResponse(
         this(
                 fakeProbability,
                 explanation,
+                null,
+                null,
+                List.of(),
                 riskLevel,
                 label,
                 threshold,
@@ -57,6 +63,9 @@ public record AIAnalysisResponse(
         this(
                 fakeProbability,
                 explanation,
+                null,
+                null,
+                List.of(),
                 riskLevel,
                 label,
                 threshold,

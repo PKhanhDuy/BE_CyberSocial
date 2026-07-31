@@ -10,7 +10,8 @@ public record MessageSocketEvent(
         MessageResponse message,
         UUID messageId,
         MessageReactionResponse reaction,
-        UUID userId
+        UUID userId,
+        Boolean online
 ) {
     public static MessageSocketEvent messageCreated(MessageResponse message) {
         return new MessageSocketEvent(
@@ -18,6 +19,7 @@ public record MessageSocketEvent(
                 message.conversationId(),
                 message,
                 message.id(),
+                null,
                 null,
                 null
         );
@@ -30,7 +32,8 @@ public record MessageSocketEvent(
                 null,
                 reaction.messageId(),
                 reaction,
-                reaction.userId()
+                reaction.userId(),
+                null
         );
     }
 
@@ -41,7 +44,20 @@ public record MessageSocketEvent(
                 null,
                 messageId,
                 null,
-                userId
+                userId,
+                null
+        );
+    }
+
+    public static MessageSocketEvent presenceUpdated(UUID userId, boolean online) {
+        return new MessageSocketEvent(
+                MessageSocketEventType.PRESENCE_UPDATED,
+                null,
+                null,
+                null,
+                null,
+                userId,
+                online
         );
     }
 }

@@ -64,12 +64,14 @@ public class AdminUserServiceImpl implements AdminUserService {
                         "Vui lòng nhập hoặc chọn lý do khóa tài khoản của người dùng.");
             }
             user.setEnabled(false);
+            user.setLockReason(request.reason().trim());
             // Tự đăng xuất người dùng đang trực tuyến: thu hồi mọi refresh token còn hiệu lực.
             refreshTokenRepository.revokeActiveTokensForUser(user.getId(), Instant.now());
             auditService.record(adminUserId, AdminActionType.LOCK_USER, AdminTargetType.USER,
                     user.getId(), request.reason(), request.note());
         } else if (!user.isEnabled()) {
             user.setEnabled(true);
+            user.setLockReason(null);
             auditService.record(adminUserId, AdminActionType.UNLOCK_USER, AdminTargetType.USER,
                     user.getId(), request.reason(), request.note());
         }

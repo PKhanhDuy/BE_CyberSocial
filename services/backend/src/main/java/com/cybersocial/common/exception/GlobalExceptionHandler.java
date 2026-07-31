@@ -33,6 +33,18 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error("Validation failed", ErrorResponse.validation(request.getRequestURI(), errors)));
     }
 
+    @ExceptionHandler(AccountLockedException.class)
+    public ResponseEntity<ApiResponse<ErrorResponse>> handleAccountLocked(
+            AccountLockedException exception,
+            HttpServletRequest request
+    ) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(ApiResponse.error(
+                        exception.getMessage(),
+                        ErrorResponse.of("ACCOUNT_LOCKED", request.getRequestURI(), exception.getReason())
+                ));
+    }
+
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ApiResponse<ErrorResponse>> handleNotFound(
             ResourceNotFoundException exception,
