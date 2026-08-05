@@ -40,15 +40,39 @@ TREE_FEATURE_NAMES: tuple[str, ...] = (
     "t_root_outdeg",
 )
 
+# Fallback only when checkpoint has no event_type2idx.
 DEFAULT_EVENT_TYPE2IDX: dict[str, int] = {
-    "tweet": 0,
+    "reply": 0,
     "retweet": 1,
-    "reply": 2,
-    "quote": 3,
-    "like": 4,
-    "comment": 2,
-    "share": 1,
+    "share": 2,
 }
+
+# CyberSocial event types → FakeNewsNet training vocabulary (reply/retweet/share).
+EVENT_TYPE_ALIASES: dict[str, str] = {
+    "tweet": "share",
+    "comment": "reply",
+    "like": "retweet",
+    "quote": "reply",
+    "reply": "reply",
+    "retweet": "retweet",
+    "share": "share",
+}
+
+
+def resolve_event_type_idx(event_type: str, event_type2idx: dict[str, int]) -> float:
+    """Map app event types onto the integer indices seen during training."""
+    if event_type in event_type2idx:
+        return float(event_type2idx[event_type])
+
+    canonical = EVENT_TYPE_ALIASES.get(event_type, event_type)
+    if canonical in event_type2idx:
+        return float(event_type2idx[canonical])
+
+    # Unknown → most common training class if available, else 0.
+    for fallback in ("share", "retweet", "reply"):
+        if fallback in event_type2idx:
+            return float(event_type2idx[fallback])
+    return 0.0
 
 
 def _log1p(value: float) -> float:
@@ -163,7 +187,7 @@ def build_raw_feature_rows(
 
         event_order = float(event.eventOrder if event.eventOrder is not None else index)
         text_len = float(event.textLen if event.textLen is not None else len(request.text))
-        event_type_idx = float(mapping.get(event.eventType, 0))
+        event_type_idx = resolve_event_type_idx(event.eventType, mapping)
 
         row: dict[str, float] = {
             "relative_time_sec": _log1p(relative_time),
@@ -226,7 +250,7 @@ def normalize_features(
 
     mean = np.asarray(edge_mean, dtype=np.float32)
     std = np.asarray(edge_std, dtype=np.float32)
-    return (raw_matrix - mean) / std
+    return (raw_matrix - mean) / np.maximum(std, 1e-6)
 
 
 def build_edge_matrix(

@@ -3,8 +3,9 @@
 Tài liệu contract inference cho AI service CyberSocial.
 
 - Notebook huấn luyện: `services/ai-service/tgnn-tice.ipynb`
-- Weights hiện tại: `models/tgnn_model.pth` (chưa đủ metadata deploy)
-- Bundle deploy khuyến nghị: `models/tgnn_deployment.pth` (cần export thêm `EDGE_MEAN`, `EDGE_STD`, `threshold`)
+- Checkpoint production hiện tại: `models/tgnn_tice.pt`
+  - Có `model_state_dict`, `CFG`, `EDGE_MEAN`/`EDGE_STD`, `EDGE_FEATURE_NAMES`, `event_type2idx`, `user2idx`
+  - Chưa có `threshold`/`best_thr` → service dùng `TGNN_THRESHOLD` (mặc định `0.5`)
 
 ---
 
@@ -186,7 +187,7 @@ edge_normalized = (edge_raw - EDGE_MEAN) / EDGE_STD
 
 TIGE mask baseline trong notebook cũng dùng vector **0** trong không gian đã chuẩn hóa.
 
-> `EDGE_MEAN` và `EDGE_STD` **chưa có** trong `tgnn_model.pth` hiện tại. Bắt buộc export vào `tgnn_deployment.pth` trước khi deploy production.
+> Checkpoint `tgnn_tice.pt` hiện đã có `EDGE_MEAN` / `EDGE_STD`. Nếu dùng artifact khác, cần đủ 2 mảng này trước khi deploy.
 
 ---
 
@@ -380,7 +381,7 @@ Trường hợp không có interaction (fallback demo):
 
 ## 10. Artifact deploy — checklist
 
-File `tgnn_deployment.pth` cần chứa:
+File `tgnn_tice.pt` (hoặc export tương đương) cần chứa:
 
 ```python
 {
@@ -399,8 +400,8 @@ File `tgnn_deployment.pth` cần chứa:
 Biến môi trường service:
 
 ```env
-TGNN_MODEL_PATH=models/tgnn_deployment.pth
-TGNN_THRESHOLD=0.59
+TGNN_MODEL_PATH=models/tgnn_tice.pt
+TGNN_THRESHOLD=0.5
 ```
 
 ---

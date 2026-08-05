@@ -135,9 +135,9 @@ public class PropagationEventBuilder {
         int shareCountSoFar = 0;
         for (PostShare share : shares) {
             shareCountSoFar++;
-            int textLen = share.getContent() != null && !share.getContent().isBlank()
-                    ? share.getContent().length()
-                    : post.getContent() == null ? 0 : post.getContent().length();
+            boolean hasQuote = share.getContent() != null && !share.getContent().isBlank();
+            int textLen = hasQuote ? share.getContent().length() : 0;
+            String eventType = hasQuote ? "share" : "retweet";
             UUID shareId = share.getId();
             double depth = shareDepthById.getOrDefault(shareId, 1);
             String parentEventId = share.getParentShare() == null
@@ -153,7 +153,7 @@ public class PropagationEventBuilder {
                             articleId,
                             share.getCreatedAt(),
                             null,
-                            "share",
+                            eventType,
                             shareCountSoFar,
                             textLen,
                             statsByUser,

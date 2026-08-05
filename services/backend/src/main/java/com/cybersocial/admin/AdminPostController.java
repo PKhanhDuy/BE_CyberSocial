@@ -53,13 +53,14 @@ public class AdminPostController {
     @GetMapping("/fake")
     public ResponseEntity<ApiResponse<PagedResponse<AdminFakePostResponse>>> listFakePosts(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) Boolean reviewed
     ) {
         int normalizedSize = Math.min(Math.max(size, 1), 100);
         Pageable pageable = PageRequest.of(Math.max(page, 0), normalizedSize);
         return ResponseEntity.ok(ApiResponse.success(
                 "Fake posts loaded",
-                adminPostService.listFakePosts(pageable)
+                adminPostService.listFakePosts(reviewed, pageable)
         ));
     }
 

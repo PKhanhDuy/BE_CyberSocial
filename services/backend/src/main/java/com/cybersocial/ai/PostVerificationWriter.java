@@ -65,6 +65,9 @@ public class PostVerificationWriter {
         verification.setThreshold(response.threshold() == null ? null : toDecimal(response.threshold()));
         verification.setMode(response.mode());
         verification.setInterpretation(response.explanation());
+        verification.setHeadline(response.headline());
+        verification.setNarrative(response.narrative());
+        verification.setContextHints(response.contextHints() == null ? List.of() : response.contextHints());
         verification.setEventAttributions(
                 response.eventAttributions() == null ? List.of() : response.eventAttributions()
         );

@@ -61,6 +61,17 @@ public class PostVerification {
     @Column(columnDefinition = "text")
     private String interpretation;
 
+    @Column(columnDefinition = "text")
+    private String headline;
+
+    @Column(columnDefinition = "text")
+    private String narrative;
+
+    @Builder.Default
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "context_hints", columnDefinition = "jsonb")
+    private List<String> contextHints = new ArrayList<>();
+
     @Builder.Default
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "event_attributions", columnDefinition = "jsonb")
@@ -122,4 +133,14 @@ public class PostVerification {
     @LastModifiedDate
     @Column(nullable = false)
     private Instant updatedAt;
+
+    public boolean interactionsLocked() {
+        if (verificationStatus != PostVerificationStatus.COMPLETED) {
+            return false;
+        }
+        if (!"FAKE".equals(label)) {
+            return false;
+        }
+        return !"REJECT_LABEL".equals(adminDecision);
+    }
 }

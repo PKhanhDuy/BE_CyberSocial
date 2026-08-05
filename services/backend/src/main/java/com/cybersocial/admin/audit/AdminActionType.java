@@ -1,6 +1,7 @@
 package com.cybersocial.admin.audit;
 
 public enum AdminActionType {
+    CREATE_ADMIN,
     LOCK_USER,
     UNLOCK_USER,
     HIDE_POST,

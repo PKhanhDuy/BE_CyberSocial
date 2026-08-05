@@ -72,6 +72,9 @@ public class User {
     @Column(nullable = false)
     private boolean enabled = true;
 
+    @Column(name = "lock_reason", length = 500)
+    private String lockReason;
+
     @Builder.Default
     @Column(name = "is_demo_user", nullable = false)
     private boolean demoUser = false;

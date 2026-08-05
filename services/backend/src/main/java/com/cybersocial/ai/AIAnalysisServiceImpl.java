@@ -1,5 +1,6 @@
 package com.cybersocial.ai;
 
+import com.cybersocial.ai.RiskLevel;
 import com.cybersocial.ai.dto.AIAnalysisRequest;
 import com.cybersocial.ai.dto.AIAnalysisResponse;
 import com.cybersocial.ai.dto.EventAttributionResponse;
@@ -75,6 +76,9 @@ public class AIAnalysisServiceImpl implements AIAnalysisService {
         return new AIAnalysisResponse(
                 response.fakeProbability(),
                 response.explanation(),
+                response.headline(),
+                response.narrative(),
+                response.contextHints() == null ? List.of() : response.contextHints(),
                 response.riskLevel(),
                 response.label(),
                 response.threshold(),
@@ -102,7 +106,9 @@ public class AIAnalysisServiceImpl implements AIAnalysisService {
             String actorLabel,
             Double tigeRemoval,
             Double confidenceDrop,
-            String summary
+            Double conditionalTige,
+            String summary,
+            String impactLevel
     ) {
     }
 
@@ -116,6 +122,7 @@ public class AIAnalysisServiceImpl implements AIAnalysisService {
             String eventTypeLabel,
             String actorLabel,
             Double tigeRemoval,
+            Double conditionalTige,
             Boolean isInfluential
     ) {
     }
@@ -123,6 +130,9 @@ public class AIAnalysisServiceImpl implements AIAnalysisService {
     private record AIServiceResponse(
             double fakeProbability,
             String explanation,
+            String headline,
+            String narrative,
+            List<String> contextHints,
             RiskLevel riskLevel,
             String label,
             Double threshold,
@@ -147,7 +157,9 @@ public class AIAnalysisServiceImpl implements AIAnalysisService {
                         payload.actorLabel(),
                         payload.tigeRemoval(),
                         payload.confidenceDrop(),
-                        payload.summary()
+                        payload.conditionalTige(),
+                        payload.summary(),
+                        payload.impactLevel()
                 ))
                 .toList();
     }
@@ -167,6 +179,7 @@ public class AIAnalysisServiceImpl implements AIAnalysisService {
                         payload.eventTypeLabel(),
                         payload.actorLabel(),
                         payload.tigeRemoval(),
+                        payload.conditionalTige(),
                         Boolean.TRUE.equals(payload.isInfluential())
                 ))
                 .toList();

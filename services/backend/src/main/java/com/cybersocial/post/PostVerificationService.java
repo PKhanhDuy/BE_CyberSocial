@@ -1,6 +1,7 @@
 package com.cybersocial.post;
 
 import com.cybersocial.ai.config.AiRuntimeConfigService;
+import com.cybersocial.common.exception.ForbiddenOperationException;
 import com.cybersocial.common.exception.ResourceNotFoundException;
 import com.cybersocial.post.dto.PostVerificationResponse;
 import com.cybersocial.post.dto.VerifiedNewsStatsResponse;
@@ -88,6 +89,27 @@ public class PostVerificationService {
             }
         }
         return 0;
+    }
+
+    @Transactional(readOnly = true)
+    public void assertInteractionsAllowed(Post post) {
+        Post contentRoot = resolveContentRoot(post);
+        postVerificationRepository.findByPostId(contentRoot.getId())
+                .filter(PostVerification::interactionsLocked)
+                .ifPresent(ignored -> {
+                    throw new ForbiddenOperationException(
+                            "Bài viết này đã bị gắn nhãn tin giả và không thể tương tác.");
+                });
+    }
+
+    private Post resolveContentRoot(Post post) {
+        Post current = post;
+        while (current.getSharedPost() != null) {
+            UUID parentId = current.getSharedPost().getId();
+            current = postRepository.findByIdWithSharedPost(parentId)
+                    .orElse(current.getSharedPost());
+        }
+        return current;
     }
 
     @Transactional(readOnly = true)

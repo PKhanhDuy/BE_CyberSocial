@@ -67,10 +67,19 @@ public class JwtUtil {
     }
 
     public long refreshTokenTtlSeconds() {
-        return properties.refreshTokenDays() * 24 * 60 * 60;
+        return refreshTokenTtlSeconds(true);
+    }
+
+    public long refreshTokenTtlSeconds(boolean rememberMe) {
+        long days = rememberMe ? properties.refreshTokenDays() : properties.refreshTokenSessionDays();
+        return Math.max(days, 1) * 24 * 60 * 60;
     }
 
     public Instant refreshTokenExpiry() {
-        return Instant.now().plusSeconds(refreshTokenTtlSeconds());
+        return refreshTokenExpiry(true);
+    }
+
+    public Instant refreshTokenExpiry(boolean rememberMe) {
+        return Instant.now().plusSeconds(refreshTokenTtlSeconds(rememberMe));
     }
 }

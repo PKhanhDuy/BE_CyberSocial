@@ -19,11 +19,12 @@ public record PostResponse(
         long commentCount,
         long shareCount,
         boolean likedByCurrentUser,
+        UUID viaShareId,
         Instant createdAt,
         Instant updatedAt
 ) {
     public static PostResponse from(Post post) {
-        return from(post, 0, 0, 0, false);
+        return from(post, 0, 0, 0, false, null);
     }
 
     public static PostResponse from(
@@ -32,6 +33,17 @@ public record PostResponse(
             long commentCount,
             long shareCount,
             boolean likedByCurrentUser
+    ) {
+        return from(post, likeCount, commentCount, shareCount, likedByCurrentUser, null);
+    }
+
+    public static PostResponse from(
+            Post post,
+            long likeCount,
+            long commentCount,
+            long shareCount,
+            boolean likedByCurrentUser,
+            UUID viaShareId
     ) {
         List<String> mediaUrls = post.getMediaUrls() == null ? List.of() : List.copyOf(post.getMediaUrls());
         return new PostResponse(
@@ -47,6 +59,7 @@ public record PostResponse(
                 commentCount,
                 shareCount,
                 likedByCurrentUser,
+                viaShareId,
                 post.getCreatedAt(),
                 post.getUpdatedAt()
         );

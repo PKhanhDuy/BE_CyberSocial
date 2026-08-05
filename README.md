@@ -75,6 +75,7 @@ JWT_SECRET=replace-with-at-least-64-random-characters-for-production-use
 JWT_ISSUER=cybersocial
 JWT_ACCESS_TOKEN_MINUTES=15
 JWT_REFRESH_TOKEN_DAYS=30
+JWT_REFRESH_TOKEN_SESSION_DAYS=1
 SERVER_PORT=8080
 CLOUDINARY_CLOUD_NAME=your-cloud-name
 CLOUDINARY_API_KEY=your-api-key

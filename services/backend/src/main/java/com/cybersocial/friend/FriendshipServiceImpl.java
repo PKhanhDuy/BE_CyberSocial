@@ -8,6 +8,7 @@ import com.cybersocial.common.exception.ResourceNotFoundException;
 import com.cybersocial.common.response.PagedResponse;
 import com.cybersocial.friend.dto.FriendUserResponse;
 import com.cybersocial.friend.dto.FriendshipResponse;
+import com.cybersocial.friend.dto.FriendshipStateResponse;
 import com.cybersocial.notification.NotificationService;
 import com.cybersocial.notification.NotificationType;
 import com.cybersocial.user.User;
@@ -78,6 +79,17 @@ public class FriendshipServiceImpl implements FriendshipService {
                 page.isFirst(),
                 page.isLast()
         );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public FriendshipStateResponse findState(UUID currentUserId, UUID targetUserId) {
+        if (currentUserId.equals(targetUserId)) {
+            return FriendshipStateResponse.none();
+        }
+        return friendshipRepository.findBetween(currentUserId, targetUserId)
+                .map(friendship -> FriendshipStateResponse.from(friendship, currentUserId))
+                .orElseGet(FriendshipStateResponse::none);
     }
 
     @Override

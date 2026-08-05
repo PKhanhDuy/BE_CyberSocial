@@ -1,5 +1,8 @@
 package com.cybersocial.ai.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
 public record EventAttributionResponse(
         int eventIndex,
         String eventType,
@@ -8,6 +11,8 @@ public record EventAttributionResponse(
         String actorLabel,
         Double tigeRemoval,
         Double confidenceDrop,
-        String summary
+        Double conditionalTige,
+        String summary,
+        String impactLevel
 ) {
 }

@@ -13,7 +13,7 @@ public interface AdminPostService {
 
     PagedResponse<AdminPostResponse> listPosts(String query, Boolean hidden, Pageable pageable);
 
-    PagedResponse<AdminFakePostResponse> listFakePosts(Pageable pageable);
+    PagedResponse<AdminFakePostResponse> listFakePosts(Boolean reviewed, Pageable pageable);
 
     AdminPostResponse updatePostHidden(UUID postId, UpdatePostHiddenRequest request);
 

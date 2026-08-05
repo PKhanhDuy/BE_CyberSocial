@@ -22,10 +22,15 @@ public record PostVerificationResponse(
         long totalInteractions,
         int nextThreshold,
         String explanation,
+        String headline,
+        String narrative,
+        List<String> contextHints,
         List<EventAttributionResponse> eventAttributions,
         List<PropagationTimelineEventResponse> propagationTimeline,
         Instant lastAnalyzedAt,
-        Instant updatedAt
+        Instant updatedAt,
+        boolean publicLabel,
+        boolean interactionsLocked
 ) {
     public static PostVerificationResponse pending(UUID postId, long totalInteractions, int nextThreshold) {
         return new PostVerificationResponse(
@@ -41,10 +46,15 @@ public record PostVerificationResponse(
                 totalInteractions,
                 nextThreshold,
                 null,
+                null,
+                null,
+                null,
                 List.of(),
                 List.of(),
                 null,
-                null
+                null,
+                false,
+                false
         );
     }
 
@@ -66,10 +76,15 @@ public record PostVerificationResponse(
                 totalInteractions,
                 nextThreshold,
                 verification.getInterpretation(),
+                verification.getHeadline(),
+                verification.getNarrative(),
+                verification.getContextHints() == null ? List.of() : verification.getContextHints(),
                 verification.getEventAttributions() == null ? List.of() : verification.getEventAttributions(),
                 verification.getPropagationTimeline() == null ? List.of() : verification.getPropagationTimeline(),
                 verification.getLastAnalyzedAt(),
-                verification.getUpdatedAt()
+                verification.getUpdatedAt(),
+                verification.isPublicLabel(),
+                verification.interactionsLocked()
         );
     }
 }

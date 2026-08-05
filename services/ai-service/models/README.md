@@ -1,21 +1,26 @@
 # TGNN Model Artifacts
 
-Place the exported TGNN artifact here:
+Đặt checkpoint huấn luyện từ notebook tại:
 
 ```text
-models/tgnn_artifact.pt
-
+models/tgnn_tice.pt
 ```
 
-The FastAPI service expects a PyTorch artifact with:
+Service đọc mặc định từ `TGNN_MODEL_PATH=models/tgnn_tice.pt`.
 
-- `state_dict` or `model_state_dict`: trained `FakeNewsTGNN` weights
-- `num_nodes`: number of user/article node ids used by the memory bank
-- `threshold`: validation-selected fake probability threshold
-- `normalization.means`: mean values for `delta_t`, `event_order`, `retweet_count`, `favorite_count`
-- `normalization.stds`: std values for the same features
-- `model_name`: BERT model name, usually `bert-base-uncased`
-- `max_len`: tokenizer max length, usually `256`
-- `config`: optional TGNN hyperparameters from training
+## Cấu trúc checkpoint hỗ trợ (`tgnn_tice.pt`)
 
-Do not commit large `.pt` model files to Git unless the repository is configured for Git LFS.
+Export từ notebook (`best_clean_tgnn_improved.pt` / tương đương) với các key:
+
+| Key | Bắt buộc | Mô tả |
+|---|---|---|
+| `model_state_dict` | ✅ | Weights TGNN |
+| `CFG` hoặc `cfg` | ✅ | Hyperparams (`hidden_dim`, `edge_feat_dim`, …) |
+| `EDGE_MEAN` / `EDGE_STD` | ✅ | Z-score 17 edge features |
+| `EDGE_FEATURE_NAMES` | ✅ | 17 tên feature đúng thứ tự MODEL_SPEC |
+| `event_type2idx` | ✅ | Thường `{reply:0, retweet:1, share:2}` |
+| `user2idx` | khuyến nghị | Map user → index |
+| `threshold` / `best_thr` | tùy chọn | Nếu thiếu → dùng `TGNN_THRESHOLD` (mặc định 0.5) |
+| `tige_temperature` / `T_robust` | tùy chọn | Temperature cho TIGE |
+
+Không commit file `.pt` lớn lên Git trừ khi repo dùng Git LFS.

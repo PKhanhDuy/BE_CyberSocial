@@ -5,6 +5,7 @@ import com.cybersocial.common.response.PagedResponse;
 import com.cybersocial.common.util.SecurityUtils;
 import com.cybersocial.friend.dto.FriendUserResponse;
 import com.cybersocial.friend.dto.FriendshipResponse;
+import com.cybersocial.friend.dto.FriendshipStateResponse;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.data.domain.PageRequest;
@@ -54,6 +55,13 @@ public class FriendshipController {
         int normalizedSize = Math.min(Math.max(size, 1), 50);
         Pageable pageable = PageRequest.of(Math.max(page, 0), normalizedSize, Sort.by(Sort.Direction.ASC, "displayName"));
         return ResponseEntity.ok(ApiResponse.success(friendshipService.searchUsers(SecurityUtils.requireCurrentUserId(), query, pageable)));
+    }
+
+    @GetMapping("/status/{userId}")
+    public ResponseEntity<ApiResponse<FriendshipStateResponse>> friendshipState(@PathVariable UUID userId) {
+        return ResponseEntity.ok(ApiResponse.success(
+                friendshipService.findState(SecurityUtils.requireCurrentUserId(), userId)
+        ));
     }
 
     @PostMapping("/requests/{userId}")

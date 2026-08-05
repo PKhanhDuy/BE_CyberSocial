@@ -1,5 +1,6 @@
 package com.cybersocial.message.websocket;
 
+import com.cybersocial.presence.PresenceService;
 import com.cybersocial.security.jwt.JwtUtil;
 import java.net.URI;
 import java.util.UUID;
@@ -16,10 +17,16 @@ public class MessageSocketHandler extends TextWebSocketHandler {
 
     private final JwtUtil jwtUtil;
     private final MessageSocketSessionRegistry sessionRegistry;
+    private final PresenceService presenceService;
 
-    public MessageSocketHandler(JwtUtil jwtUtil, MessageSocketSessionRegistry sessionRegistry) {
+    public MessageSocketHandler(
+            JwtUtil jwtUtil,
+            MessageSocketSessionRegistry sessionRegistry,
+            PresenceService presenceService
+    ) {
         this.jwtUtil = jwtUtil;
         this.sessionRegistry = sessionRegistry;
+        this.presenceService = presenceService;
     }
 
     @Override
@@ -31,14 +38,20 @@ public class MessageSocketHandler extends TextWebSocketHandler {
         }
 
         session.getAttributes().put(USER_ID_ATTRIBUTE, userId);
-        sessionRegistry.register(userId, session);
+        boolean becameOnline = sessionRegistry.register(userId, session);
+        if (becameOnline) {
+            presenceService.notifyFriendsOnline(userId);
+        }
     }
 
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
         Object userId = session.getAttributes().get(USER_ID_ATTRIBUTE);
         if (userId instanceof UUID id) {
-            sessionRegistry.unregister(id, session);
+            boolean becameOffline = sessionRegistry.unregister(id, session);
+            if (becameOffline) {
+                presenceService.notifyFriendsOffline(id);
+            }
         }
     }
 

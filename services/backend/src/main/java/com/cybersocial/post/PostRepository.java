@@ -113,6 +113,9 @@ public interface PostRepository extends JpaRepository<Post, UUID> {
                     where post.synthetic = false
                       and verification.verificationStatus = com.cybersocial.post.PostVerificationStatus.COMPLETED
                       and verification.label = 'FAKE'
+                      and (:reviewed is null
+                        or (:reviewed = true and verification.reviewedAt is not null)
+                        or (:reviewed = false and verification.reviewedAt is null))
                     order by verification.updatedAt desc
                     """,
             countQuery = """
@@ -121,9 +124,12 @@ public interface PostRepository extends JpaRepository<Post, UUID> {
                     where post.synthetic = false
                       and verification.verificationStatus = com.cybersocial.post.PostVerificationStatus.COMPLETED
                       and verification.label = 'FAKE'
+                      and (:reviewed is null
+                        or (:reviewed = true and verification.reviewedAt is not null)
+                        or (:reviewed = false and verification.reviewedAt is null))
                     """
     )
-    Page<Post> findFakePosts(Pageable pageable);
+    Page<Post> findFakePosts(@Param("reviewed") Boolean reviewed, Pageable pageable);
 
     @Query(
             value = """
