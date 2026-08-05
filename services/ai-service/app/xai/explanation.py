@@ -283,14 +283,6 @@ def build_explanation_content(
         attributions,
     )
     return headline, narrative, explanation, context_hints
-    supports_prediction = confidence_drop > 0
-    if target_class == 1:
-        if supports_prediction:
-            return "khiến hệ thống nghi ngờ bài viết hơn"
-        return "giảm bớt mức nghi ngờ"
-    if supports_prediction:
-        return "ủng hộ kết luận bài này đáng tin"
-    return "làm giảm độ tin cậy vào bài viết"
 
 
 def _verdict_phrase(label: str, fake_probability: float) -> str:

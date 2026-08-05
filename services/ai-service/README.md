@@ -113,6 +113,48 @@ TGNN_ALLOW_TEXT_ONLY=true
 TGNN_MAX_EVENTS=256
 ```
 
+## LLM narration — giải thích tự nhiên hơn (tùy chọn)
+
+TGNN/TIGE vẫn quyết định kết quả. LLM chỉ **viết lại** `headline` và `narrative` từ dữ liệu có sẵn.
+
+Chọn provider qua `LLM_NARRATION_PROVIDER`: `none` | `gemini` | `ollama`
+
+### Gemini (free — khuyên dùng khi deploy)
+
+1. Lấy API key miễn phí tại [Google AI Studio](https://aistudio.google.com/apikey)
+2. Thêm vào `.env`:
+
+```env
+LLM_NARRATION_PROVIDER=gemini
+GEMINI_API_KEY=your-api-key-here
+GEMINI_MODEL=gemini-2.0-flash
+GEMINI_TIMEOUT_SECONDS=30
+```
+
+3. Restart AI service. Lỗi / hết quota → tự động fallback template.
+
+Model free khác: `gemini-1.5-flash` (nhẹ hơn, ít quota hơn).
+
+**Lưu ý:** Không commit `GEMINI_API_KEY` lên Git. Chỉ đặt trong `.env` trên máy hoặc secret của VPS.
+
+### Ollama (local)
+
+```env
+LLM_NARRATION_PROVIDER=ollama
+OLLAMA_BASE_URL=http://127.0.0.1:11434
+OLLAMA_MODEL=qwen2.5:7b
+```
+
+Hoặc legacy: `OLLAMA_NARRATION_ENABLED=true` (tương đương `LLM_NARRATION_PROVIDER=ollama`).
+
+Docker → host: `OLLAMA_BASE_URL=http://host.docker.internal:11434`
+
+### Tắt LLM
+
+```env
+LLM_NARRATION_PROVIDER=none
+```
+
 ## Related Docs
 
 - Feature contract: `MODEL_SPEC.md`

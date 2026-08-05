@@ -133,4 +133,14 @@ public class PostVerification {
     @LastModifiedDate
     @Column(nullable = false)
     private Instant updatedAt;
+
+    public boolean interactionsLocked() {
+        if (verificationStatus != PostVerificationStatus.COMPLETED) {
+            return false;
+        }
+        if (!"FAKE".equals(label)) {
+            return false;
+        }
+        return !"REJECT_LABEL".equals(adminDecision);
+    }
 }

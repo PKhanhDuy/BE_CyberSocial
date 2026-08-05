@@ -164,6 +164,7 @@ public class PostServiceImpl implements PostService {
     @Transactional
     public PostResponse likePost(UUID currentUserId, UUID postId) {
         Post post = getPost(postId);
+        postVerificationService.assertInteractionsAllowed(post);
         User user = getUser(currentUserId);
         if (postLikeRepository.findByPostIdAndUserId(postId, currentUserId).isEmpty()) {
             postLikeRepository.save(PostLike.builder()
@@ -180,6 +181,7 @@ public class PostServiceImpl implements PostService {
     @Transactional
     public PostResponse unlikePost(UUID currentUserId, UUID postId) {
         Post post = getPost(postId);
+        postVerificationService.assertInteractionsAllowed(post);
         postLikeRepository.findByPostIdAndUserId(postId, currentUserId)
                 .ifPresent(postLikeRepository::delete);
         postStatisticsService.invalidate(postId);
@@ -207,6 +209,7 @@ public class PostServiceImpl implements PostService {
     @Transactional
     public PostCommentResponse commentPost(UUID currentUserId, UUID postId, PostCommentRequest request) {
         Post post = getPost(postId);
+        postVerificationService.assertInteractionsAllowed(post);
         User user = getUser(currentUserId);
         String content = normalizeRequired(request.content(), "Comment content is required");
 
@@ -242,6 +245,7 @@ public class PostServiceImpl implements PostService {
     public PostResponse sharePost(UUID currentUserId, UUID postId, PostShareRequest request) {
         Post viewedPost = postRepository.findByIdWithSharedPost(postId)
                 .orElseThrow(() -> new ResourceNotFoundException("Post not found"));
+        postVerificationService.assertInteractionsAllowed(viewedPost);
         Post rootPost = resolveRootPost(viewedPost);
         User user = getUser(currentUserId);
         String content = normalizeOptional(request.content());

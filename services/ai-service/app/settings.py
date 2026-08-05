@@ -16,5 +16,23 @@ class Settings:
     tige_top_k = int(os.getenv("TGNN_TIGE_TOP_K", "5"))
     tige_max_events = int(os.getenv("TGNN_TIGE_MAX_EVENTS", "100"))
 
+    ollama_narration_enabled = os.getenv("OLLAMA_NARRATION_ENABLED", "false").lower() == "true"
+    ollama_base_url = os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434")
+    ollama_model = os.getenv("OLLAMA_MODEL", "qwen2.5:7b")
+    ollama_timeout_seconds = int(os.getenv("OLLAMA_TIMEOUT_SECONDS", "30"))
+
+    gemini_api_key = os.getenv("GEMINI_API_KEY", "")
+    gemini_model = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+    gemini_timeout_seconds = int(os.getenv("GEMINI_TIMEOUT_SECONDS", "30"))
+
+    @property
+    def llm_narration_provider(self) -> str:
+        explicit = os.getenv("LLM_NARRATION_PROVIDER", "").strip().lower()
+        if explicit:
+            return explicit
+        if self.ollama_narration_enabled:
+            return "ollama"
+        return "none"
+
 
 settings = Settings()

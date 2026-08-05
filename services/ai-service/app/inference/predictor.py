@@ -8,11 +8,11 @@ from app.inference.validation import resolve_inference_mode, validate_analyze_re
 from app.schemas import AnalyzeRequest, AnalyzeResponse, InteractionEvent
 from app.settings import settings
 from app.xai.explanation import (
-    build_basic_explanation,
     build_event_attributions,
     build_explanation_content,
     build_propagation_timeline,
 )
+from app.xai.llm_narrator import maybe_enhance_with_llm
 from app.xai.tige import compute_tige
 
 
@@ -43,6 +43,36 @@ class TGNNPredictor:
         self.load_error: str | None = None
         if eager_load:
             self.load()
+
+    @staticmethod
+    def _finalize_explanation(
+        label: str,
+        fake_probability: float,
+        threshold: float,
+        graph_event_count: int,
+        events: list[InteractionEvent],
+        attributions: list,
+        mode: str,
+    ) -> tuple[str, str, str, list[str]]:
+        headline, narrative, explanation, context_hints = build_explanation_content(
+            label,
+            fake_probability,
+            threshold,
+            graph_event_count,
+            events,
+            attributions,
+            mode=mode,
+        )
+        headline, narrative = maybe_enhance_with_llm(
+            headline=headline,
+            narrative=narrative,
+            label=label,
+            fake_probability=fake_probability,
+            graph_event_count=graph_event_count,
+            context_hints=context_hints,
+            attributions=attributions,
+        )
+        return headline, narrative, explanation, context_hints
 
     @property
     def is_loaded(self) -> bool:
@@ -129,7 +159,7 @@ class TGNNPredictor:
         explanation = ""
 
         if mode == "text_only_fallback":
-            headline, narrative, explanation, context_hints = build_explanation_content(
+            headline, narrative, explanation, context_hints = self._finalize_explanation(
                 label,
                 fake_probability,
                 threshold,
@@ -167,7 +197,7 @@ class TGNNPredictor:
                     tige_result,
                     settings.tige_top_k,
                 )
-                headline, narrative, explanation, context_hints = build_explanation_content(
+                headline, narrative, explanation, context_hints = self._finalize_explanation(
                     label,
                     fake_probability,
                     threshold,
@@ -177,7 +207,7 @@ class TGNNPredictor:
                     mode=mode,
                 )
             else:
-                headline, narrative, explanation, context_hints = build_explanation_content(
+                headline, narrative, explanation, context_hints = self._finalize_explanation(
                     label,
                     fake_probability,
                     threshold,
@@ -187,7 +217,7 @@ class TGNNPredictor:
                     mode=mode,
                 )
         else:
-            headline, narrative, explanation, context_hints = build_explanation_content(
+            headline, narrative, explanation, context_hints = self._finalize_explanation(
                 label,
                 fake_probability,
                 threshold,

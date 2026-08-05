@@ -66,8 +66,8 @@ public class AdminPostServiceImpl implements AdminPostService {
 
     @Override
     @Transactional(readOnly = true)
-    public PagedResponse<AdminFakePostResponse> listFakePosts(Pageable pageable) {
-        Page<Post> posts = postRepository.findFakePosts(pageable);
+    public PagedResponse<AdminFakePostResponse> listFakePosts(Boolean reviewed, Pageable pageable) {
+        Page<Post> posts = postRepository.findFakePosts(reviewed, pageable);
         List<UUID> postIds = posts.getContent().stream().map(Post::getId).toList();
         Map<UUID, PostVerification> verificationByPostId = postVerificationRepository.findByPostIds(postIds)
                 .stream()

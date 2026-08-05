@@ -28,7 +28,9 @@ public record PostVerificationResponse(
         List<EventAttributionResponse> eventAttributions,
         List<PropagationTimelineEventResponse> propagationTimeline,
         Instant lastAnalyzedAt,
-        Instant updatedAt
+        Instant updatedAt,
+        boolean publicLabel,
+        boolean interactionsLocked
 ) {
     public static PostVerificationResponse pending(UUID postId, long totalInteractions, int nextThreshold) {
         return new PostVerificationResponse(
@@ -50,7 +52,9 @@ public record PostVerificationResponse(
                 List.of(),
                 List.of(),
                 null,
-                null
+                null,
+                false,
+                false
         );
     }
 
@@ -78,7 +82,9 @@ public record PostVerificationResponse(
                 verification.getEventAttributions() == null ? List.of() : verification.getEventAttributions(),
                 verification.getPropagationTimeline() == null ? List.of() : verification.getPropagationTimeline(),
                 verification.getLastAnalyzedAt(),
-                verification.getUpdatedAt()
+                verification.getUpdatedAt(),
+                verification.isPublicLabel(),
+                verification.interactionsLocked()
         );
     }
 }
