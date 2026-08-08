@@ -1,8 +1,9 @@
 from contextlib import asynccontextmanager
 import threading
 
-from fastapi import FastAPI, HTTPException, status
+from fastapi import Depends, FastAPI, HTTPException, status
 
+from app.auth import verify_analyze_api_key
 from app.inference.predictor import ModelNotLoadedError, TGNNPredictor
 from app.schemas import AnalyzeRequest, AnalyzeResponse, HealthResponse
 from app.settings import settings
@@ -65,7 +66,7 @@ def health_check() -> HealthResponse:
     )
 
 
-@app.post("/analyze")
+@app.post("/analyze", dependencies=[Depends(verify_analyze_api_key)])
 def analyze_text(request: AnalyzeRequest) -> AnalyzeResponse:
     try:
         return predictor.analyze(request)

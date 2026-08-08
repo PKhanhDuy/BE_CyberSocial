@@ -14,6 +14,7 @@ import com.cybersocial.common.util.SecurityUtils;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import java.time.Duration;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
@@ -32,9 +33,17 @@ public class AuthController {
     private static final String REFRESH_COOKIE_NAME = "Refresh";
 
     private final AuthService authService;
+    private final boolean cookieSecure;
+    private final String cookieSameSite;
 
-    public AuthController(AuthService authService) {
+    public AuthController(
+            AuthService authService,
+            @Value("${app.security.cookie.secure:true}") boolean cookieSecure,
+            @Value("${app.security.cookie.same-site:Lax}") String cookieSameSite
+    ) {
         this.authService = authService;
+        this.cookieSecure = cookieSecure;
+        this.cookieSameSite = cookieSameSite;
     }
 
     @PostMapping("/register")
@@ -107,23 +116,21 @@ public class AuthController {
     }
 
     private void addRefreshCookie(HttpServletResponse response, AuthenticationResult result) {
-        ResponseCookie cookie = ResponseCookie.from(REFRESH_COOKIE_NAME, result.refreshToken())
-                .httpOnly(true)
-                .secure(true)
-                .sameSite("Lax")
-                .path("/api/auth")
+        ResponseCookie cookie = refreshCookieBuilder(result.refreshToken())
                 .maxAge(Duration.ofSeconds(result.refreshTokenMaxAgeSeconds()))
                 .build();
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
     }
 
     private ResponseCookie expiredRefreshCookie() {
-        return ResponseCookie.from(REFRESH_COOKIE_NAME, "")
+        return refreshCookieBuilder("").maxAge(Duration.ZERO).build();
+    }
+
+    private ResponseCookie.ResponseCookieBuilder refreshCookieBuilder(String value) {
+        return ResponseCookie.from(REFRESH_COOKIE_NAME, value)
                 .httpOnly(true)
-                .secure(true)
-                .sameSite("Lax")
-                .path("/api/auth")
-                .maxAge(Duration.ZERO)
-                .build();
+                .secure(cookieSecure)
+                .sameSite(cookieSameSite)
+                .path("/api/auth");
     }
 }

@@ -45,12 +45,13 @@ docker compose up --build
 
 Services:
 
-- Backend: `http://localhost:8080`
-- AI service: `http://localhost:8000`
-- PostgreSQL: `localhost:5432`
-- Redis: `localhost:6379`
+- Backend: `http://localhost:8080` (only service exposed to the host)
+- AI service: internal only (`http://ai-service:8000` inside Docker network)
+- Redis: internal only (`redis:6379` inside Docker network)
 
 Copy `.env.example` to `.env` if you want to override the default local values used by `docker-compose.yml`.
+
+For local development outside Docker Compose (e.g. running backend with `./mvnw spring-boot:run`), you can still start Redis on the host with `-p 6379:6379` as shown above.
 
 PowerShell equivalent:
 

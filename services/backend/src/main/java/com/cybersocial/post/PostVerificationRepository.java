@@ -84,6 +84,7 @@ public interface PostVerificationRepository extends JpaRepository<PostVerificati
             join verification.post post
             where post.synthetic = false
               and post.hidden = false
+              and post.visibility <> com.cybersocial.post.PostVisibility.PRIVATE
               and verification.verificationStatus = com.cybersocial.post.PostVerificationStatus.COMPLETED
               and verification.label = 'REAL'
             """)
@@ -95,6 +96,7 @@ public interface PostVerificationRepository extends JpaRepository<PostVerificati
             inner join posts p on p.id = v.post_id
             where p.is_synthetic = false
               and p.hidden = false
+              and p.visibility <> 'PRIVATE'
               and v.verification_status = 'COMPLETED'
               and v.label = 'REAL'
               and v.last_analyzed_at is not null
@@ -108,6 +110,7 @@ public interface PostVerificationRepository extends JpaRepository<PostVerificati
             where verification.verificationStatus = :status
               and post.synthetic = false
               and post.hidden = false
+              and post.visibility <> com.cybersocial.post.PostVisibility.PRIVATE
             """)
     long countByStatusForVisiblePosts(@Param("status") PostVerificationStatus status);
 }

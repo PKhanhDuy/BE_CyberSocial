@@ -7,7 +7,6 @@ import java.util.UUID;
 
 public record FriendUserResponse(
         UUID id,
-        String email,
         String displayName,
         String avatarUrl,
         String coverUrl,
@@ -17,7 +16,6 @@ public record FriendUserResponse(
     public static FriendUserResponse from(User user, Friendship friendship) {
         return new FriendUserResponse(
                 user.getId(),
-                user.getEmail(),
                 user.getDisplayName(),
                 user.getAvatarUrl(),
                 user.getCoverUrl(),

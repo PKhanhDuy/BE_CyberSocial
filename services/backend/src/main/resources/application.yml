@@ -61,6 +61,7 @@ management:
 app:
   ai-service:
     url: ${AI_SERVICE_URL:http://localhost:8000}
+    api-key: ${AI_SERVICE_API_KEY:}
   ai-analysis:
     enabled: ${AI_AUTO_ANALYSIS_ENABLED:true}
     thresholds:
@@ -78,6 +79,9 @@ app:
       access-token-minutes: ${JWT_ACCESS_TOKEN_MINUTES}
       refresh-token-days: ${JWT_REFRESH_TOKEN_DAYS}
       refresh-token-session-days: ${JWT_REFRESH_TOKEN_SESSION_DAYS:1}
+    cookie:
+      secure: ${AUTH_COOKIE_SECURE:true}
+      same-site: ${AUTH_COOKIE_SAME_SITE:Lax}
   cors:
     allowed-origins:
       - http://localhost:5173

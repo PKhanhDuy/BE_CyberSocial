@@ -13,7 +13,6 @@ import com.cybersocial.post.Post;
 import com.cybersocial.post.PostRepository;
 import java.time.Duration;
 import java.util.List;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
@@ -30,17 +29,21 @@ public class AIAnalysisServiceImpl implements AIAnalysisService {
             PostRepository postRepository,
             PropagationEventBuilder propagationEventBuilder,
             AiAnalysisProperties aiAnalysisProperties,
-            @Value("${app.ai-service.url:${AI_SERVICE_URL:http://localhost:8000}}") String aiServiceUrl
+            AiServiceProperties aiServiceProperties
     ) {
         SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
         Duration timeout = Duration.ofSeconds(aiAnalysisProperties.timeoutSeconds());
         requestFactory.setConnectTimeout(timeout);
         requestFactory.setReadTimeout(timeout);
 
-        this.restClient = restClientBuilder
-                .baseUrl(aiServiceUrl)
-                .requestFactory(requestFactory)
-                .build();
+        RestClient.Builder clientBuilder = restClientBuilder
+                .baseUrl(aiServiceProperties.url())
+                .requestFactory(requestFactory);
+        if (aiServiceProperties.hasApiKey()) {
+            clientBuilder = clientBuilder.defaultHeader("X-API-Key", aiServiceProperties.apiKey());
+        }
+
+        this.restClient = clientBuilder.build();
         this.postRepository = postRepository;
         this.propagationEventBuilder = propagationEventBuilder;
     }

@@ -1,5 +1,6 @@
 package com.cybersocial.admin.dto;
 
+import com.cybersocial.auth.validation.StrongPassword;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -14,7 +15,7 @@ public record CreateAdminUserRequest(
         String displayName,
 
         @NotBlank(message = "Vui lòng nhập mật khẩu")
-        @Size(min = 8, max = 72, message = "Mật khẩu phải từ 8 đến 72 ký tự")
+        @StrongPassword
         String password
 ) {
 }

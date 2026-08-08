@@ -17,15 +17,23 @@ public interface PostRepository extends JpaRepository<Post, UUID> {
                     left join fetch sharedPost.author
                     where post.synthetic = false
                       and post.hidden = false
+                      and (
+                        post.visibility <> com.cybersocial.post.PostVisibility.PRIVATE
+                        or post.author.id = :currentUserId
+                      )
                     order by post.createdAt desc
                     """,
             countQuery = """
                     select count(post) from Post post
                     where post.synthetic = false
                       and post.hidden = false
+                      and (
+                        post.visibility <> com.cybersocial.post.PostVisibility.PRIVATE
+                        or post.author.id = :currentUserId
+                      )
                     """
     )
-    Page<Post> findVisiblePosts(Pageable pageable);
+    Page<Post> findVisiblePosts(@Param("currentUserId") UUID currentUserId, Pageable pageable);
 
     @Query(
             value = """
@@ -36,6 +44,10 @@ public interface PostRepository extends JpaRepository<Post, UUID> {
                     where post.author.id = :authorId
                       and post.synthetic = false
                       and post.hidden = false
+                      and (
+                        post.author.id = :currentUserId
+                        or post.visibility <> com.cybersocial.post.PostVisibility.PRIVATE
+                      )
                     order by post.createdAt desc
                     """,
             countQuery = """
@@ -43,9 +55,17 @@ public interface PostRepository extends JpaRepository<Post, UUID> {
                     where post.author.id = :authorId
                       and post.synthetic = false
                       and post.hidden = false
+                      and (
+                        post.author.id = :currentUserId
+                        or post.visibility <> com.cybersocial.post.PostVisibility.PRIVATE
+                      )
                     """
     )
-    Page<Post> findVisiblePostsByAuthor(@Param("authorId") UUID authorId, Pageable pageable);
+    Page<Post> findVisiblePostsByAuthor(
+            @Param("authorId") UUID authorId,
+            @Param("currentUserId") UUID currentUserId,
+            Pageable pageable
+    );
 
     long countByAuthorId(UUID authorId);
 
@@ -69,6 +89,7 @@ public interface PostRepository extends JpaRepository<Post, UUID> {
             select count(post) from Post post
             where post.synthetic = false
               and post.hidden = false
+              and post.visibility <> com.cybersocial.post.PostVisibility.PRIVATE
             """)
     long countVisiblePosts();
 
@@ -140,6 +161,7 @@ public interface PostRepository extends JpaRepository<Post, UUID> {
                     join PostVerification verification on verification.post = post
                     where post.synthetic = false
                       and post.hidden = false
+                      and post.visibility <> com.cybersocial.post.PostVisibility.PRIVATE
                       and verification.verificationStatus = com.cybersocial.post.PostVerificationStatus.COMPLETED
                       and verification.label = 'REAL'
                     order by verification.updatedAt desc
@@ -149,6 +171,7 @@ public interface PostRepository extends JpaRepository<Post, UUID> {
                     join PostVerification verification on verification.post = post
                     where post.synthetic = false
                       and post.hidden = false
+                      and post.visibility <> com.cybersocial.post.PostVisibility.PRIVATE
                       and verification.verificationStatus = com.cybersocial.post.PostVerificationStatus.COMPLETED
                       and verification.label = 'REAL'
                     """
@@ -159,6 +182,7 @@ public interface PostRepository extends JpaRepository<Post, UUID> {
             select post.content from Post post
             where post.synthetic = false
               and post.hidden = false
+              and post.visibility <> com.cybersocial.post.PostVisibility.PRIVATE
               and post.content is not null
               and post.content <> ''
             order by post.createdAt desc
