@@ -162,6 +162,9 @@ public class AdminPostServiceImpl implements AdminPostService {
             verification.setPublicLabel(false);
             auditService.record(adminId, AdminActionType.REJECT_FAKE_LABEL, AdminTargetType.POST,
                     postId, request.note(), null);
+            notifyAuthor(post, "Nhãn tin giả đã được gỡ bỏ",
+                    "Quản trị viên đã xác minh bài viết của bạn và gỡ nhãn nghi vấn do AI gán. Bài viết hiển thị bình thường trở lại.",
+                    request.note());
         }
 
         postVerificationRepository.save(verification);
