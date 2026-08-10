@@ -40,6 +40,15 @@ docker compose up --build ai-service
 
 ### `POST /analyze`
 
+Requires header `X-API-Key` when `AI_SERVICE_API_KEY` is set (recommended for Docker/production). `/health` stays public for container health checks.
+
+```bash
+curl -X POST http://localhost:8000/analyze \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: your-shared-secret" \
+  -d '{"text":"Article text","includeXai":true}'
+```
+
 **Text-only (backend hiện tại — chế độ `text_only_fallback`):**
 
 ```json
@@ -111,7 +120,10 @@ TGNN_ST_MODEL_NAME=sentence-transformers/all-MiniLM-L6-v2
 TGNN_THRESHOLD=0.59
 TGNN_ALLOW_TEXT_ONLY=true
 TGNN_MAX_EVENTS=256
+AI_SERVICE_API_KEY=replace-with-a-long-random-secret
 ```
+
+Set the same `AI_SERVICE_API_KEY` in backend `.env` so Spring Boot sends `X-API-Key` on every `/analyze` call. Leave empty only for local dev without auth.
 
 ## LLM narration — giải thích tự nhiên hơn (tùy chọn)
 

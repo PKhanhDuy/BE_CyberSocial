@@ -24,9 +24,9 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     @Query("""
             select u from User u
             where u.id <> :currentUserId
+              and u.enabled = true
               and (:query = ''
-                or lower(u.displayName) like concat('%', lower(:query), '%')
-                or lower(u.email) like concat('%', lower(:query), '%'))
+                or lower(u.displayName) like concat('%', lower(:query), '%'))
             order by u.displayName asc
             """)
     Page<User> searchUsers(

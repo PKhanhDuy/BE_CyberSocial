@@ -94,6 +94,9 @@ public class StoryServiceImpl implements StoryService {
         String mediaUrl = normalizeRequired(mediaRequest.mediaUrl(), "Media URL is required");
         String caption = normalizeOptional(request.caption());
         StoryVisibility visibility = request.visibility() == null ? StoryVisibility.FRIENDS : request.visibility();
+        if (visibility == StoryVisibility.PUBLIC) {
+            throw new BadRequestException("Stories are only visible to friends and followers. Use FRIENDS or PRIVATE.");
+        }
         MusicTrack musicTrack = resolveMusicTrack(request, mediaRequest);
         Integer musicStartMs = resolveMusicStartMs(musicTrack, request.musicStartMs());
         Integer musicDurationMs = resolveMusicDurationMs(musicTrack, request.musicDurationMs());

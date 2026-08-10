@@ -29,7 +29,7 @@ public interface PostService {
 
     PostResponse unlikePost(UUID currentUserId, UUID postId);
 
-    PagedResponse<PostCommentResponse> findComments(UUID postId, Pageable pageable);
+    PagedResponse<PostCommentResponse> findComments(UUID currentUserId, UUID postId, Pageable pageable);
 
     PostCommentResponse commentPost(UUID currentUserId, UUID postId, PostCommentRequest request);
 
@@ -37,5 +37,5 @@ public interface PostService {
 
     PostResponse sharePost(UUID currentUserId, UUID postId, PostShareRequest request);
 
-    PostVerificationResponse findVerification(UUID postId);
+    PostVerificationResponse findVerification(UUID currentUserId, UUID postId);
 }

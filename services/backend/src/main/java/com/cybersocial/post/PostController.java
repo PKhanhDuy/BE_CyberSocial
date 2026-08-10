@@ -102,7 +102,7 @@ public class PostController {
     ) {
         int normalizedSize = Math.min(Math.max(size, 1), 50);
         Pageable pageable = PageRequest.of(Math.max(page, 0), normalizedSize);
-        return ResponseEntity.ok(ApiResponse.success(postService.findComments(id, pageable)));
+        return ResponseEntity.ok(ApiResponse.success(postService.findComments(SecurityUtils.requireCurrentUserId(), id, pageable)));
     }
 
     @PostMapping("/{id}/comments")
@@ -125,7 +125,7 @@ public class PostController {
 
     @GetMapping("/{id}/verification")
     public ResponseEntity<ApiResponse<PostVerificationResponse>> getVerification(@PathVariable UUID id) {
-        return ResponseEntity.ok(ApiResponse.success(postService.findVerification(id)));
+        return ResponseEntity.ok(ApiResponse.success(postService.findVerification(SecurityUtils.requireCurrentUserId(), id)));
     }
 
     @PostMapping("/{id}/shares")

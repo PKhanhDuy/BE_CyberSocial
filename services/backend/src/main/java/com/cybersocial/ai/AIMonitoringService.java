@@ -8,6 +8,7 @@ import com.cybersocial.post.PostVerification;
 import com.cybersocial.post.PostVerificationRepository;
 import com.cybersocial.post.PostVerificationService;
 import com.cybersocial.post.PostVerificationStatus;
+import com.cybersocial.common.util.SecurityUtils;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -65,7 +66,10 @@ public class AIMonitoringService {
     @Transactional(readOnly = true)
     public List<PendingScanPostResponse> getPendingScanPosts(int limit) {
         int resolvedLimit = Math.min(Math.max(limit, 1), 10);
-        List<Post> posts = postRepository.findVisiblePosts(PageRequest.of(0, CANDIDATE_POST_LIMIT)).getContent();
+        List<Post> posts = postRepository.findVisiblePosts(
+                SecurityUtils.requireCurrentUserId(),
+                PageRequest.of(0, CANDIDATE_POST_LIMIT)
+        ).getContent();
         if (posts.isEmpty()) {
             return List.of();
         }

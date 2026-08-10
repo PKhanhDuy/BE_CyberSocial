@@ -2,7 +2,6 @@ package com.cybersocial.post;
 
 import com.cybersocial.ai.PostAnalysisTriggerService;
 import com.cybersocial.auth.repository.UserRepository;
-import com.cybersocial.common.util.SecurityUtils;
 import com.cybersocial.common.exception.BadRequestException;
 import com.cybersocial.common.exception.ForbiddenOperationException;
 import com.cybersocial.common.exception.ResourceNotFoundException;
@@ -35,6 +34,7 @@ public class PostServiceImpl implements PostService {
     private final PostStatisticsService postStatisticsService;
     private final PostAnalysisTriggerService postAnalysisTriggerService;
     private final PostVerificationService postVerificationService;
+    private final PostAccessService postAccessService;
 
     public PostServiceImpl(
             PostRepository postRepository,
@@ -44,7 +44,8 @@ public class PostServiceImpl implements PostService {
             UserRepository userRepository,
             PostStatisticsService postStatisticsService,
             PostAnalysisTriggerService postAnalysisTriggerService,
-            PostVerificationService postVerificationService
+            PostVerificationService postVerificationService,
+            PostAccessService postAccessService
     ) {
         this.postRepository = postRepository;
         this.postLikeRepository = postLikeRepository;
@@ -54,14 +55,15 @@ public class PostServiceImpl implements PostService {
         this.postStatisticsService = postStatisticsService;
         this.postAnalysisTriggerService = postAnalysisTriggerService;
         this.postVerificationService = postVerificationService;
+        this.postAccessService = postAccessService;
     }
 
     @Override
     @Transactional(readOnly = true)
     public PagedResponse<PostResponse> findPosts(UUID currentUserId, Pageable pageable, UUID authorId) {
         Page<Post> posts = authorId == null
-                ? postRepository.findVisiblePosts(pageable)
-                : postRepository.findVisiblePostsByAuthor(authorId, pageable);
+                ? postRepository.findVisiblePosts(currentUserId, pageable)
+                : postRepository.findVisiblePostsByAuthor(authorId, currentUserId, pageable);
         List<UUID> postIds = posts.getContent().stream().map(Post::getId).toList();
         Map<UUID, PostStatistics> statistics = postStatisticsService.findAll(postIds);
         Set<UUID> likedPostIds = postIds.isEmpty()
@@ -117,7 +119,7 @@ public class PostServiceImpl implements PostService {
     @Override
     @Transactional(readOnly = true)
     public PostResponse findPost(UUID currentUserId, UUID id) {
-        Post post = getPost(id);
+        Post post = getPost(currentUserId, id);
         return toResponse(
                 post,
                 postStatisticsService.find(id),
@@ -152,7 +154,7 @@ public class PostServiceImpl implements PostService {
     @Override
     @Transactional
     public void deletePost(UUID currentUserId, UUID postId) {
-        Post post = getPost(postId);
+        Post post = getPost(currentUserId, postId);
         if (!post.getAuthor().getId().equals(currentUserId)) {
             throw new ForbiddenOperationException("You can only delete your own posts");
         }
@@ -163,7 +165,7 @@ public class PostServiceImpl implements PostService {
     @Override
     @Transactional
     public PostResponse likePost(UUID currentUserId, UUID postId) {
-        Post post = getPost(postId);
+        Post post = getPost(currentUserId, postId);
         postVerificationService.assertInteractionsAllowed(post);
         User user = getUser(currentUserId);
         if (postLikeRepository.findByPostIdAndUserId(postId, currentUserId).isEmpty()) {
@@ -180,7 +182,7 @@ public class PostServiceImpl implements PostService {
     @Override
     @Transactional
     public PostResponse unlikePost(UUID currentUserId, UUID postId) {
-        Post post = getPost(postId);
+        Post post = getPost(currentUserId, postId);
         postVerificationService.assertInteractionsAllowed(post);
         postLikeRepository.findByPostIdAndUserId(postId, currentUserId)
                 .ifPresent(postLikeRepository::delete);
@@ -190,8 +192,8 @@ public class PostServiceImpl implements PostService {
 
     @Override
     @Transactional(readOnly = true)
-    public PagedResponse<PostCommentResponse> findComments(UUID postId, Pageable pageable) {
-        getPost(postId);
+    public PagedResponse<PostCommentResponse> findComments(UUID currentUserId, UUID postId, Pageable pageable) {
+        getPost(currentUserId, postId);
         Page<PostCommentResponse> page = postCommentRepository.findByPostIdWithUserOrderByCreatedAtAsc(postId, pageable)
                 .map(PostCommentResponse::from);
         return new PagedResponse<>(
@@ -208,7 +210,7 @@ public class PostServiceImpl implements PostService {
     @Override
     @Transactional
     public PostCommentResponse commentPost(UUID currentUserId, UUID postId, PostCommentRequest request) {
-        Post post = getPost(postId);
+        Post post = getPost(currentUserId, postId);
         postVerificationService.assertInteractionsAllowed(post);
         User user = getUser(currentUserId);
         String content = normalizeRequired(request.content(), "Comment content is required");
@@ -226,6 +228,7 @@ public class PostServiceImpl implements PostService {
     @Override
     @Transactional
     public void deleteComment(UUID currentUserId, UUID postId, UUID commentId) {
+        getPost(currentUserId, postId);
         PostComment comment = postCommentRepository.findById(commentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Comment not found"));
         if (!comment.getPost().getId().equals(postId)) {
@@ -245,8 +248,10 @@ public class PostServiceImpl implements PostService {
     public PostResponse sharePost(UUID currentUserId, UUID postId, PostShareRequest request) {
         Post viewedPost = postRepository.findByIdWithSharedPost(postId)
                 .orElseThrow(() -> new ResourceNotFoundException("Post not found"));
+        postAccessService.assertCanView(currentUserId, viewedPost);
         postVerificationService.assertInteractionsAllowed(viewedPost);
         Post rootPost = resolveRootPost(viewedPost);
+        postAccessService.assertCanShare(rootPost);
         User user = getUser(currentUserId);
         String content = normalizeOptional(request.content());
         PostShare parentShare = resolveParentShare(viewedPost, rootPost, request.viaShareId());
@@ -274,16 +279,15 @@ public class PostServiceImpl implements PostService {
 
     @Override
     @Transactional(readOnly = true)
-    public PostVerificationResponse findVerification(UUID postId) {
+    public PostVerificationResponse findVerification(UUID currentUserId, UUID postId) {
+        getPost(currentUserId, postId);
         return postVerificationService.findByPostId(postId);
     }
 
-    private Post getPost(UUID postId) {
+    private Post getPost(UUID currentUserId, UUID postId) {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new ResourceNotFoundException("Post not found"));
-        if (post.isHidden() && !SecurityUtils.isAdmin()) {
-            throw new ResourceNotFoundException("Post not found");
-        }
+        postAccessService.assertCanView(currentUserId, post);
         return post;
     }
 
