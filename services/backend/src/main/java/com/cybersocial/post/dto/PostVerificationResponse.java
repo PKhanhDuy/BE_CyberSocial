@@ -67,7 +67,7 @@ public record PostVerificationResponse(
                 verification.getPost().getId(),
                 verification.getVerificationStatus(),
                 verification.getFakeProbability() == null ? null : verification.getFakeProbability().doubleValue(),
-                verification.getLabel(),
+                verification.effectiveLabel(),
                 verification.getRiskLevel(),
                 verification.getThreshold() == null ? null : verification.getThreshold().doubleValue(),
                 verification.getMode(),

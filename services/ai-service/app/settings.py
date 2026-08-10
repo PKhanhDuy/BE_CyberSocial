@@ -6,7 +6,7 @@ class Settings:
     model_path = Path(os.getenv("TGNN_MODEL_PATH", "models/tgnn_tice.pt"))
     api_key = os.getenv("AI_SERVICE_API_KEY", "").strip()
     st_model_name = os.getenv(
-        "TGNN_ST_MODEL_NAME",
+        "TGNN_ST_MODEL_NAME", 
         "sentence-transformers/all-MiniLM-L6-v2",
     )
     max_len = int(os.getenv("TGNN_MAX_LEN", "256"))

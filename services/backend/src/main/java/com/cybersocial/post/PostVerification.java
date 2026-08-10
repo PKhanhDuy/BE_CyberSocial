@@ -143,4 +143,12 @@ public class PostVerification {
         }
         return !"REJECT_LABEL".equals(adminDecision);
     }
+
+    /** Nhãn hiển thị cho người dùng: admin bác bỏ thì coi như REAL dù AI vẫn lưu FAKE. */
+    public String effectiveLabel() {
+        if ("REJECT_LABEL".equals(adminDecision)) {
+            return "REAL";
+        }
+        return label;
+    }
 }
