@@ -30,6 +30,7 @@ public record PostVerificationResponse(
         Instant lastAnalyzedAt,
         Instant updatedAt,
         boolean publicLabel,
+        String adminDecision,
         boolean interactionsLocked
 ) {
     public static PostVerificationResponse pending(UUID postId, long totalInteractions, int nextThreshold) {
@@ -54,6 +55,7 @@ public record PostVerificationResponse(
                 null,
                 null,
                 false,
+                null,
                 false
         );
     }
@@ -67,7 +69,7 @@ public record PostVerificationResponse(
                 verification.getPost().getId(),
                 verification.getVerificationStatus(),
                 verification.getFakeProbability() == null ? null : verification.getFakeProbability().doubleValue(),
-                verification.effectiveLabel(),
+                verification.getLabel(),
                 verification.getRiskLevel(),
                 verification.getThreshold() == null ? null : verification.getThreshold().doubleValue(),
                 verification.getMode(),
@@ -84,6 +86,7 @@ public record PostVerificationResponse(
                 verification.getLastAnalyzedAt(),
                 verification.getUpdatedAt(),
                 verification.isPublicLabel(),
+                verification.getAdminDecision(),
                 verification.interactionsLocked()
         );
     }
